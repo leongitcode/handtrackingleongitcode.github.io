@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Shooter</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="game-container"></div>
+
+  <div id="ui-overlay">
+    <div id="connection-menu">
+      <h1>3D SHOOTER</h1>
+      <p class="subtitle">2-Player Online Battle</p>
+      <div class="menu-buttons">
+        <button id="host-btn" class="btn btn-primary">HOST GAME</button>
+        <div class="or-divider">OR</div>
+        <div class="join-group">
+          <input type="text" id="peer-id-input" placeholder="Enter peer ID to join...">
+          <button id="join-btn" class="btn btn-secondary">JOIN GAME</button>
+        </div>
+      </div>
+      <div id="connection-status" class="status hidden">Connecting...</div>
+      <div id="peer-id-display" class="hidden">
+        <div id="peer-id-text">Share this ID: <span id="peer-id-value"></span></div>
+        <button id="copy-id-btn" class="btn btn-small btn-copy">COPY</button>
+      </div>
+    </div>
+
+    <div id="game-hud" class="hidden">
+      <div id="health-container">
+        <div id="health-label">HP</div>
+        <div id="health-bar-bg">
+          <div id="health-bar"></div>
+        </div>
+      </div>
+      <div id="opponent-health-container">
+        <div id="opponent-health-label">ENEMY</div>
+        <div id="opponent-health-bar-bg">
+          <div id="opponent-health-bar"></div>
+        </div>
+      </div>
+      <div id="kill-feed"></div>
+      <div id="crosshair">+</div>
+      <div id="instructions">Click to lock mouse &bull; WASD to move &bull; Left click to shoot</div>
+    </div>
+
+    <div id="game-over-overlay" class="hidden">
+      <div id="game-over-box">
+        <h1 id="game-over-title">GAME OVER</h1>
+        <p id="game-over-message"></p>
+        <button id="restart-btn" class="btn btn-primary">PLAY AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/peerjs@1.5.1/dist/peerjs.min.js"></script>
+  <script src="js/network.js"></script>
+  <script src="js/game.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
