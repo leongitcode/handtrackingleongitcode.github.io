@@ -3,21 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wirtualny Kursor Lab - Pełna Stabilna Wersja</title>
+  <title>Wirtualny Kursor Lab - Multihand + Scrolling</title>
   
-  <!-- Poprawione biblioteki MediaPipe z pełnymi ścieżkami -->
+  <!-- Biblioteki MediaPipe z pełnymi ścieżkami -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
   <style>
     body {
       margin: 0;
-      padding: 20px;
+      padding: 20px 20px 100px 20px; /* Dodatkowy padding na dole */
       background: #141419;
       font-family: 'Segoe UI', sans-serif;
       color: #fff;
-      overflow: hidden;
-      height: 100vh;
+      min-height: 100vh;
+      overflow-x: hidden;
+      overflow-y: auto; /* Pozwala na przewijanie w pionie */
       display: flex;
       flex-direction: column;
       box-sizing: border-box;
@@ -34,6 +35,7 @@
       text-align: center;
       margin: 0 0 20px 0;
       color: #aaa;
+      font-size: 15px;
     }
 
     .grid-container {
@@ -43,7 +45,6 @@
       max-width: 1000px;
       width: 100%;
       margin: 0 auto;
-      flex-grow: 1;
     }
 
     .test-card {
@@ -56,6 +57,7 @@
       justify-content: center;
       align-items: center;
       gap: 12px;
+      min-height: 150px;
     }
 
     .card-title {
@@ -63,27 +65,48 @@
       color: #888;
       text-transform: uppercase;
       letter-spacing: 1px;
+      text-align: center;
     }
 
-    #virtual-cursor {
-      position: absolute;
+    /* KURSORY - Ustawione na 'fixed', aby podążały za ekranem podczas scrollowania */
+    .cursor {
+      position: fixed; 
       width: 24px;
       height: 24px;
-      background-color: #ff3366;
       border-radius: 50%;
       pointer-events: none; 
       z-index: 9999;
       transform: translate(-50%, -50%);
-      box-shadow: 0 0 15px rgba(255, 51, 102, 0.6);
       left: 50%;
       top: 50%;
+      display: none;
+      transition: width 0.1s, height 0.1s, background-color 0.1s;
     }
 
-    #virtual-cursor.clicking {
-      background-color: #00ff66;
+    #virtual-cursor-1 {
+      background-color: #ff3366;
+      box-shadow: 0 0 15px rgba(255, 51, 102, 0.6);
+    }
+
+    #virtual-cursor-2 {
+      background-color: #00d2ff;
+      box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
+    }
+
+    /* Stan zaciśniętej pięści */
+    .cursor.clicking {
+      background-color: #00ff66 !important;
       width: 16px;
       height: 16px;
-      box-shadow: 0 0 20px rgba(0, 255, 102, 0.9);
+      box-shadow: 0 0 20px rgba(0, 255, 102, 0.9) !important;
+    }
+
+    /* Stan przesuwania tła (scroll) */
+    .cursor.dragging {
+      background-color: #b055ff !important;
+      box-shadow: 0 0 20px rgba(176, 85, 255, 0.9) !important;
+      width: 20px;
+      height: 20px;
     }
 
     .test-btn {
@@ -117,46 +140,9 @@
       color: #00ff66;
     }
 
-    .keypad {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 5px;
-      width: 100%;
-    }
-    .key-btn {
-      padding: 10px;
-      font-size: 14px;
-      background: #3a3a45;
-    }
-
-    .toggle-box {
-      width: 60px;
-      height: 34px;
-      background-color: #ccc;
-      border-radius: 34px;
-      position: relative;
-      transition: background-color 0.3s;
-    }
-    .toggle-box::before {
-      content: "";
-      position: absolute;
-      width: 26px;
-      height: 26px;
-      left: 4px;
-      bottom: 4px;
-      background-color: white;
-      border-radius: 50%;
-      transition: transform 0.3s;
-    }
-    .toggle-box.active {
-      background-color: #00cc66;
-    }
-    .toggle-box.active::before {
-      transform: translateX(26px);
-    }
-
+    /* KAMERA - Ustawiona na 'fixed', aby zostawała w rogu podczas scrollowania */
     #webcam {
-      position: absolute;
+      position: fixed;
       bottom: 20px;
       right: 20px;
       width: 160px;
@@ -171,20 +157,17 @@
 </head>
 <body>
 
-  <h1>Wirtualny Kursor Lab</h1>
-  <p class="instructions">Najedź czerwonym kółkiem na przycisk i <strong>Zaciśnij Pięść</strong>, aby kliknąć!</p>
+  <h1>Wirtualny Kursor Lab (Scroll)</h1>
+  <p class="instructions">
+    Najedź kursorem na przycisk i <strong>zaciśnij pięść</strong>, aby kliknąć!<br>
+    Aby przeskrolować stronę: <strong>zaciśnij pięść w pustym miejscu i pociągnij dłoń w dół lub górę.</strong>
+  </p>
 
-  <div class="grid-container">
+  <div class="grid-container" id="main-grid">
     <div class="test-card">
       <div class="card-title">Licznik Kliknięć</div>
       <div class="counter-display" id="click-count">0</div>
       <button class="test-btn" id="btn-count">+ Dodaj Punkt</button>
-    </div>
-
-    <div class="test-card">
-      <div class="card-title">Przełącznik</div>
-      <div class="toggle-box" id="test-toggle"></div>
-      <button class="test-btn" id="btn-toggle">Zmień Stan</button>
     </div>
 
     <div class="test-card">
@@ -196,141 +179,206 @@
       <div class="card-title">Kolor Tła</div>
       <button class="test-btn btn-success" id="btn-color">Zmień Kolor</button>
     </div>
+    
+    <!-- Dodatkowe kafelki by strona była wystarczająco długa do scrollowania -->
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 1</div><button class="test-btn test-dummy">Kliknij mnie 1</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 2</div><button class="test-btn test-dummy">Kliknij mnie 2</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 3</div><button class="test-btn test-dummy">Kliknij mnie 3</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 4</div><button class="test-btn test-dummy">Kliknij mnie 4</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 5</div><button class="test-btn test-dummy">Kliknij mnie 5</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 6</div><button class="test-btn test-dummy">Kliknij mnie 6</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 7</div><button class="test-btn test-dummy">Kliknij mnie 7</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 8</div><button class="test-btn test-dummy">Kliknij mnie 8</button></div>
+    <div class="test-card"><div class="card-title">Dodatkowy Pasek 9</div><button class="test-btn test-dummy">Kliknij mnie 9</button></div>
 
-    <div class="test-card">
-      <div class="card-title">Klawiatura Numeryczna</div>
-      <div class="keypad">
-        <button class="test-btn key-btn">1</button>
-        <button class="test-btn key-btn">2</button>
-        <button class="test-btn key-btn">3</button>
-        <button class="test-btn key-btn">4</button>
-        <button class="test-btn key-btn">5</button>
-        <button class="test-btn key-btn">6</button>
-      </div>
-    </div>
-
-    <div class="test-card">
+    <div class="test-card" style="grid-column: span 3;">
       <div class="card-title">Reset Panelu</div>
       <button class="test-btn" id="btn-reset" style="background-color: #777;">Resetuj Wszystko</button>
     </div>
   </div>
 
   <video id="webcam" autoplay playsinline></video>
-  <div id="virtual-cursor"></div>
+  
+  <!-- Dwa kursory -->
+  <div id="virtual-cursor-1" class="cursor"></div>
+  <div id="virtual-cursor-2" class="cursor"></div>
 
   <script>
     const videoElement = document.getElementById('webcam');
-    const cursorElement = document.getElementById('virtual-cursor');
-    const allButtons = document.querySelectorAll('.test-btn');
     
     let counterValue = 0;
-    let isFistClosed = false;
 
-    // Obsługa kliknięć interfejsu
+    // Funkcje dla przycisków
     document.getElementById('btn-count').addEventListener('click', () => {
       counterValue++;
       document.getElementById('click-count').innerText = counterValue;
     });
-
-    document.getElementById('btn-toggle').addEventListener('click', () => {
-      document.getElementById('test-toggle').classList.toggle('active');
-    });
-
     document.getElementById('btn-alert').addEventListener('click', () => {
       alert("Kliknięcie pięścią działa poprawnie!");
     });
-
     document.getElementById('btn-color').addEventListener('click', () => {
       document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' : '#29112f';
     });
-
     document.getElementById('btn-reset').addEventListener('click', () => {
       counterValue = 0;
       document.getElementById('click-count').innerText = 0;
-      document.getElementById('test-toggle').classList.remove('active');
       document.body.style.backgroundColor = '#141419';
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     });
-
-    document.querySelectorAll('.key-btn').forEach(key => {
-      key.addEventListener('click', () => {
-        key.style.background = '#00ff66';
-        setTimeout(() => key.style.background = '', 400);
+    document.querySelectorAll('.test-dummy').forEach(btn => {
+      btn.addEventListener('click', () => {
+        btn.style.backgroundColor = '#ffcc00';
+        btn.style.color = '#000';
+        setTimeout(() => { btn.style.backgroundColor = ''; btn.style.color = ''; }, 400);
       });
     });
 
-    // Płynny ruch interpolowany (Inercja)
-    let currentX = window.innerWidth / 2;
-    let currentY = window.innerHeight / 2;
-    let targetX = currentX;
-    let targetY = currentY;
-    const SMOOTHING_FACTOR = 0.15; 
+    // Struktura pamiętająca stan kursorów + zmienne do scrollowania
+    const cursors = [
+      {
+        element: document.getElementById('virtual-cursor-1'),
+        currentX: window.innerWidth / 2, currentY: window.innerHeight / 2,
+        targetX: window.innerWidth / 2, targetY: window.innerHeight / 2,
+        isFistClosed: false,
+        active: false,
+        isDragging: false,    // Czy obecnie trzyma i przewija tło
+        dragStartY: 0,        // Y dłoni w momencie zaciśnięcia
+        startScrollY: 0       // Przesunięcie strony w momencie zaciśnięcia
+      },
+      {
+        element: document.getElementById('virtual-cursor-2'),
+        currentX: window.innerWidth / 2, currentY: window.innerHeight / 2,
+        targetX: window.innerWidth / 2, targetY: window.innerHeight / 2,
+        isFistClosed: false,
+        active: false,
+        isDragging: false,
+        dragStartY: 0,
+        startScrollY: 0
+      }
+    ];
+
+    const SMOOTHING_FACTOR = 0.15;
+    const SCROLL_SENSITIVITY = 2500; // Jak szybko strona ma przewijać się przy ruchu dłoni
 
     function onResults(results) {
-      if (!results || !results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-        return;
-      }
-
-      const hand = results.multiHandLandmarks[0]; 
-      const handAnchor = hand[9]; // Kostka palca środkowego
-
+      const detectedHands = results.multiHandLandmarks || [];
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
-      // Mapowanie współrzędnych z lekkim paddingiem 15% na brzegi ekranu
-      targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.15) / 0.7 * windowWidth));
-      targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.15) / 0.7 * windowHeight));
+      // Zawsze pobieramy aktualną listę przycisków
+      const allButtons = document.querySelectorAll('.test-btn');
+      const hoveredElements = new Set();
 
-      // Wykrywanie najechania (Hover)
-      let hoveredElement = null;
+      for (let i = 0; i < 2; i++) {
+        const cursor = cursors[i];
+        
+        if (i < detectedHands.length) {
+          const hand = detectedHands[i];
+          const handAnchor = hand[9]; // Kostka palca środkowego do śledzenia pozycji
+
+          cursor.active = true;
+          cursor.element.style.display = 'block';
+
+          // Ponieważ używamy position: fixed, mapujemy względem samego okna (viewport)
+          cursor.targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.15) / 0.7 * windowWidth));
+          cursor.targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.15) / 0.7 * windowHeight));
+
+          // Logika wykrywania zaciskania pięści
+          const isIndexClosed  = hand[8].y  > hand[6].y;
+          const isMiddleClosed = hand[12].y > hand[10].y;
+          const isRingClosed   = hand[16].y > hand[14].y;
+          const isPinkyClosed  = hand[20].y > hand[18].y;
+          const currentFistState = isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed;
+
+          // Wykrywanie najechania na guziki
+          let hoveredElement = null;
+          allButtons.forEach(btn => {
+            const rect = btn.getBoundingClientRect(); // rect podaje koordynaty względem viewportu (idealnie pasuje do fixed!)
+            if (cursor.currentX >= rect.left && cursor.currentX <= rect.right && 
+                cursor.currentY >= rect.top && cursor.currentY <= rect.bottom) {
+              hoveredElements.add(btn);
+              hoveredElement = btn;
+            }
+          });
+
+          // Akcje w momencie zaciśnięcia pięści lub poruszania nią
+          if (currentFistState) {
+            if (!cursor.isFistClosed) {
+              // MOMENT ZACIŚNIĘCIA PIĘŚCI (Event "Mousedown")
+              cursor.isFistClosed = true;
+              
+              if (hoveredElement) {
+                // Kliknij przycisk
+                cursor.element.classList.add('clicking');
+                hoveredElement.click();
+              } else {
+                // Nie było przycisku - rozpocznij Scrollowanie (Grabbing)
+                cursor.isDragging = true;
+                cursor.dragStartY = handAnchor.y;
+                cursor.startScrollY = window.scrollY;
+                cursor.element.classList.add('dragging'); // Zmienia kolor na fioletowy, żeby pokazać drag
+              }
+            } else if (cursor.isDragging) {
+              // PIĘŚĆ JEST NADAL ZACIŚNIĘTA I SCROLLUJE (Event "Mousemove" drag)
+              // Obliczamy o ile przesunęła się dłoń w pionie
+              const deltaY = (handAnchor.y - cursor.dragStartY) * SCROLL_SENSITIVITY;
+              // Przewijamy stronę - ruch dłoni w dół przewija do góry (jak na smartfonie)
+              window.scrollTo({
+                top: cursor.startScrollY - deltaY,
+                left: 0,
+                behavior: 'instant' 
+              });
+            }
+          } else {
+            // PIĘŚĆ OTWARTA (Event "Mouseup")
+            cursor.isFistClosed = false;
+            cursor.isDragging = false;
+            cursor.element.classList.remove('clicking');
+            cursor.element.classList.remove('dragging');
+          }
+        } else {
+          // Ukryj kursor, jeśli dłoń zniknęła
+          cursor.active = false;
+          cursor.element.style.display = 'none';
+          cursor.isFistClosed = false;
+          cursor.isDragging = false;
+          cursor.element.classList.remove('clicking', 'dragging');
+        }
+      }
+
+      // Aktualizacja efektu Hover na przyciskach
       allButtons.forEach(btn => {
-        const rect = btn.getBoundingClientRect();
-        if (currentX >= rect.left && currentX <= rect.right && currentY >= rect.top && currentY <= rect.bottom) {
+        if (hoveredElements.has(btn)) {
           btn.classList.add('hovered');
-          hoveredElement = btn;
         } else {
           btn.classList.remove('hovered');
         }
       });
-
-      // Logika sprawdzania zaciśniętej pięści
-      const isIndexClosed  = hand[8].y  > hand[6].y;
-      const isMiddleClosed = hand[12].y > hand[10].y;
-      const isRingClosed   = hand[16].y > hand[14].y;
-      const isPinkyClosed  = hand[20].y > hand[18].y;
-
-      if (isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed) {
-        if (!isFistClosed) {
-          isFistClosed = true;
-          cursorElement.classList.add('clicking');
-          if (hoveredElement) {
-            hoveredElement.click();
-          }
-        }
-      } else {
-        isFistClosed = false;
-        cursorElement.classList.remove('clicking');
-      }
     }
 
-    // Pętla animacji płynnego rysowania kursora
+    // Pętla renderująca kursory (60FPS)
     function updateCursorAnimation() {
-      currentX += (targetX - currentX) * SMOOTHING_FACTOR;
-      currentY += (targetY - currentY) * SMOOTHING_FACTOR;
+      cursors.forEach(cursor => {
+        if (cursor.active) {
+          cursor.currentX += (cursor.targetX - cursor.currentX) * SMOOTHING_FACTOR;
+          cursor.currentY += (cursor.targetY - cursor.currentY) * SMOOTHING_FACTOR;
 
-      cursorElement.style.left = `${currentX}px`;
-      cursorElement.style.top = `${currentY}px`;
+          cursor.element.style.left = `${cursor.currentX}px`;
+          cursor.element.style.top = `${cursor.currentY}px`;
+        }
+      });
 
       requestAnimationFrame(updateCursorAnimation);
     }
     requestAnimationFrame(updateCursorAnimation);
 
-    // Konfiguracja MediaPipe Hands z POPRAWIONĄ ścieżką
+    // Inicjalizacja MediaPipe Hands
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
 
     hands.setOptions({
-      maxNumHands: 1,
+      maxNumHands: 2,
       modelComplexity: 1,
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
@@ -338,7 +386,7 @@
 
     hands.onResults(onResults);
 
-    // Uruchomienie strumienia wideo z kamery
+    // Kamera
     const camera = new Camera(videoElement, {
       onFrame: async () => {
         await hands.send({image: videoElement});
