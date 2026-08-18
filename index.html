@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Wirtualny Kursor Lab - Pełna Stabilna Wersja</title>
   
-  <!-- Stabilne biblioteki MediaPipe z CDN -->
-  <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
-  <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
+  <!-- Poprawione biblioteki MediaPipe z pełnymi ścieżkami -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
   <style>
     body {
@@ -324,9 +324,9 @@
     }
     requestAnimationFrame(updateCursorAnimation);
 
-    // Konfiguracja MediaPipe Hands z poprawionym ciągiem szablonu URL
+    // Konfiguracja MediaPipe Hands z POPRAWIONĄ ścieżką
     const hands = new Hands({
-      locateFile: (file) => `https://jsdelivr.net{file}`
+      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
 
     hands.setOptions({
@@ -348,3 +348,6 @@
     });
 
     camera.start();
+  </script>
+</body>
+</html>
