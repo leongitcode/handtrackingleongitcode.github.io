@@ -1,558 +1,1398 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wirtualny Kursor Lab + 3 Minigry</title>
-  
-  <!-- Szybkie i stabilne biblioteki MediaPipe -->
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wirtualny Kursor Lab + Just Dance</title>
 
-  <style>
-    body {
-      margin: 0;
-      padding: 20px 20px 100px 20px;
-      background: #141419;
-      font-family: 'Segoe UI', sans-serif;
-      color: #fff;
-      min-height: 100vh;
-      overflow-x: hidden;
-      overflow-y: auto;
-      box-sizing: border-box;
-    }
+    <!-- MediaPipe: Hands + Pose -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous">
+    </script>
 
-    h1 {
-      text-align: center;
-      margin: 0 0 5px 0;
-      font-size: 26px;
-      color: #ff3366;
-    }
+    <style>
+        /* ----- GLOBAL ----- */
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            margin: 0;
+            padding: 20px 20px 120px 20px;
+            background: #141419;
+            font-family: 'Segoe UI', sans-serif;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+            overflow-y: auto;
+            transition: background 0.3s;
+        }
+        h1 {
+            text-align: center;
+            margin: 0 0 5px 0;
+            font-size: 26px;
+            color: #ff3366;
+        }
+        .sub {
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            margin: 0 0 15px 0;
+        }
 
-    p.instructions {
-      text-align: center;
-      margin: 0 0 20px 0;
-      color: #aaa;
-      font-size: 14px;
-    }
+        /* ----- MODE TOGGLE ----- */
+        .mode-bar {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            background: #1e1e24;
+            padding: 10px 20px;
+            border-radius: 40px;
+            max-width: 400px;
+            margin: 0 auto 25px auto;
+            border: 1px solid #2d2d35;
+        }
+        .mode-btn {
+            background: transparent;
+            border: none;
+            color: #888;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 8px 24px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.25s;
+            letter-spacing: 0.5px;
+        }
+        .mode-btn.active {
+            background: #ff3366;
+            color: #fff;
+            box-shadow: 0 0 18px rgba(255, 51, 102, 0.4);
+        }
+        .mode-btn:hover:not(.active) {
+            color: #fff;
+        }
+        .mode-indicator {
+            font-size: 13px;
+            color: #666;
+            padding: 0 6px;
+        }
 
-    /* KURSOR */
-    #virtual-cursor {
-      position: fixed;
-      width: 22px;
-      height: 22px;
-      background-color: #ff3366;
-      border-radius: 50%;
-      pointer-events: none; 
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      left: 50%;
-      top: 50%;
-      display: none;
-      box-shadow: 0 0 15px rgba(255, 51, 102, 0.8);
-      transition: width 0.08s, height 0.08s, background-color 0.08s;
-    }
+        /* ----- KURSOR (hand mode) ----- */
+        #virtual-cursor {
+            position: fixed;
+            width: 22px;
+            height: 22px;
+            background-color: #ff3366;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 9999;
+            transform: translate(-50%, -50%);
+            left: 50%;
+            top: 50%;
+            display: none;
+            box-shadow: 0 0 15px rgba(255, 51, 102, 0.8);
+            transition: width 0.08s, height 0.08s, background-color 0.08s;
+        }
+        #virtual-cursor.clicking {
+            background-color: #00ff66 !important;
+            width: 14px;
+            height: 14px;
+            box-shadow: 0 0 20px rgba(0, 255, 102, 1) !important;
+        }
+        #virtual-cursor.dragging {
+            background-color: #b055ff !important;
+            box-shadow: 0 0 20px rgba(176, 85, 255, 1) !important;
+            width: 18px;
+            height: 18px;
+        }
 
-    #virtual-cursor.clicking {
-      background-color: #00ff66 !important;
-      width: 14px;
-      height: 14px;
-      box-shadow: 0 0 20px rgba(0, 255, 102, 1) !important;
-    }
+        /* ----- SEKCJE ----- */
+        .section-title {
+            text-align: center;
+            font-size: 20px;
+            color: #3399ff;
+            margin: 30px 0 15px 0;
+            border-bottom: 2px solid #2d2d35;
+            padding-bottom: 8px;
+        }
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            max-width: 1000px;
+            width: 100%;
+            margin: 0 auto;
+        }
+        .test-card {
+            background: #1e1e24;
+            border: 2px solid #2d2d35;
+            border-radius: 12px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            min-height: 140px;
+        }
+        .card-title {
+            font-size: 13px;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .clickable {
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.1s, background-color 0.2s;
+        }
+        .clickable.hovered {
+            transform: scale(1.05) !important;
+            filter: brightness(1.2);
+        }
+        .test-btn {
+            padding: 12px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            color: white;
+            background-color: #3399ff;
+            border: none;
+            border-radius: 8px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn-danger {
+            background-color: #ff3333;
+        }
+        .btn-success {
+            background-color: #00cc66;
+        }
 
-    #virtual-cursor.dragging {
-      background-color: #b055ff !important;
-      box-shadow: 0 0 20px rgba(176, 85, 255, 1) !important;
-      width: 18px;
-      height: 18px;
-    }
+        /* ----- GRY (hand mode) ----- */
+        #bubble-area {
+            width: 100%;
+            height: 160px;
+            background: #121216;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+            border: 1px dashed #444;
+        }
+        .bubble {
+            position: absolute;
+            width: 42px;
+            height: 42px;
+            background: radial-gradient(circle at 30% 30%, #ff6699, #ff0055);
+            border-radius: 50%;
+            box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
+        }
+        .mole-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 220px;
+        }
+        .mole-hole {
+            height: 55px;
+            background: #2a2a35;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 28px;
+        }
+        .memory-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            width: 100%;
+            max-width: 280px;
+        }
+        .memory-card {
+            height: 60px;
+            background: #3399ff;
+            border-radius: 8px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 24px;
+            color: transparent;
+        }
+        .memory-card.flipped {
+            background: #2a2a35;
+            color: #fff;
+        }
 
-    /* SEKCJE I SEKTORY */
-    .section-title {
-      text-align: center;
-      font-size: 20px;
-      color: #3399ff;
-      margin: 30px 0 15px 0;
-      border-bottom: 2px solid #2d2d35;
-      padding-bottom: 8px;
-    }
+        /* ===== DANCE MODE ===== */
+        #dance-section {
+            display: none;
+            max-width: 1100px;
+            margin: 0 auto;
+            padding: 0 10px;
+        }
+        #dance-section.active {
+            display: block;
+        }
 
-    .grid-container {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 15px;
-      max-width: 1000px;
-      width: 100%;
-      margin: 0 auto;
-    }
+        .dance-layout {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            align-items: flex-start;
+        }
+        .dance-canvas-wrap {
+            position: relative;
+            flex: 2;
+            min-width: 340px;
+            max-width: 780px;
+            border-radius: 16px;
+            overflow: hidden;
+            background: #0b0b0e;
+            border: 2px solid #2d2d35;
+            aspect-ratio: 16/11;
+        }
+        #danceCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #0b0b0e;
+        }
 
-    .test-card {
-      background: #1e1e24;
-      border: 2px solid #2d2d35;
-      border-radius: 12px;
-      padding: 15px;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      gap: 10px;
-      min-height: 140px;
-    }
+        .dance-side {
+            flex: 1;
+            min-width: 220px;
+            max-width: 320px;
+            background: #1a1a20;
+            border-radius: 16px;
+            padding: 18px 16px 20px;
+            border: 2px solid #2d2d35;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+        .dance-side .big-score {
+            font-size: 42px;
+            font-weight: 800;
+            color: #ffdd44;
+            text-shadow: 0 0 30px rgba(255, 221, 68, 0.3);
+            line-height: 1;
+        }
+        .dance-side .label {
+            color: #888;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .dance-side .move-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: #66ddff;
+            min-height: 40px;
+            text-align: center;
+        }
+        .dance-side .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #2d2d35;
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 4px 0;
+        }
+        .dance-side .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #ff3366, #ffdd44);
+            border-radius: 4px;
+            transition: width 0.15s;
+        }
+        .dance-side .feedback {
+            font-size: 20px;
+            font-weight: 700;
+            min-height: 36px;
+            color: #aaa;
+            text-align: center;
+        }
+        .dance-side .ctrl-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 100%;
+        }
+        .dance-side .ctrl-row button {
+            padding: 10px 26px;
+            border: none;
+            border-radius: 30px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.2s;
+            background: #3399ff;
+            color: #fff;
+            flex: 1;
+            min-width: 100px;
+        }
+        .dance-side .ctrl-row button:active {
+            transform: scale(0.95);
+        }
+        .dance-side .ctrl-row button.danger {
+            background: #ff3366;
+        }
+        .dance-side .ctrl-row button.green {
+            background: #00cc66;
+        }
+        .dance-side .ctrl-row button:disabled {
+            opacity: 0.4;
+            pointer-events: none;
+        }
+        .dance-stats {
+            display: flex;
+            gap: 16px;
+            font-size: 14px;
+            color: #aaa;
+            justify-content: center;
+            width: 100%;
+        }
+        .dance-stats span {
+            background: #25252e;
+            padding: 4px 14px;
+            border-radius: 20px;
+        }
 
-    .card-title {
-      font-size: 13px;
-      color: #888;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+        /* ----- KAMERA (współdzielona) ----- */
+        #webcam {
+            position: fixed;
+            bottom: 15px;
+            right: 15px;
+            width: 140px;
+            height: 105px;
+            transform: scaleX(-1);
+            border: 2px solid #2d2d35;
+            border-radius: 8px;
+            z-index: 10;
+            background: #000;
+        }
 
-    /* PRZYCISKI ORAZ INTERAKCJE */
-    .clickable {
-      cursor: pointer;
-      user-select: none;
-      transition: transform 0.1s, background-color 0.2s;
-    }
-
-    .clickable.hovered {
-      transform: scale(1.05) !important;
-      filter: brightness(1.2);
-    }
-
-    .test-btn {
-      padding: 12px 20px;
-      font-size: 15px;
-      font-weight: bold;
-      color: white;
-      background-color: #3399ff;
-      border: none;
-      border-radius: 8px;
-      width: 100%;
-      box-sizing: border-box;
-    }
-
-    .btn-danger { background-color: #ff3333; }
-    .btn-success { background-color: #00cc66; }
-
-    /* GRE 1: BUBBLE POP */
-    #bubble-area {
-      width: 100%;
-      height: 220px;
-      background: #121216;
-      border-radius: 8px;
-      position: relative;
-      overflow: hidden;
-      border: 1px dashed #444;
-    }
-    .bubble {
-      position: absolute;
-      width: 45px;
-      height: 45px;
-      background: radial-gradient(circle at 30% 30%, #ff6699, #ff0055);
-      border-radius: 50%;
-      box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
-    }
-
-    /* GRE 2: WHACK-A-MOLE */
-    .mole-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-      width: 100%;
-      max-width: 260px;
-    }
-    .mole-hole {
-      height: 65px;
-      background: #2a2a35;
-      border-radius: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 30px;
-    }
-
-    /* GRE 3: MEMORY MATCH */
-    .memory-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      width: 100%;
-      max-width: 320px;
-    }
-    .memory-card {
-      height: 70px;
-      background: #3399ff;
-      border-radius: 8px;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 28px;
-      color: transparent;
-    }
-    .memory-card.flipped {
-      background: #2a2a35;
-      color: #fff;
-    }
-
-    /* KAMERA */
-    #webcam {
-      position: fixed;
-      bottom: 15px;
-      right: 15px;
-      width: 140px;
-      height: 105px;
-      transform: scaleX(-1);
-      border: 2px solid #2d2d35;
-      border-radius: 8px;
-      z-index: 10;
-      background: #000;
-    }
-  </style>
+        /* ----- RESPONSIVE ----- */
+        @media(max-width:740px) {
+            .grid-container {
+                grid-template-columns: 1fr 1fr;
+            }
+            .dance-layout {
+                flex-direction: column;
+                align-items: center;
+            }
+            .dance-canvas-wrap {
+                min-width: 0;
+                width: 100%;
+                max-width: 100%;
+            }
+            .dance-side {
+                max-width: 100%;
+                width: 100%;
+            }
+            #webcam {
+                width: 100px;
+                height: 75px;
+            }
+        }
+        @media(max-width:500px) {
+            .grid-container {
+                grid-template-columns: 1fr;
+            }
+            .mode-bar {
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 10px 14px;
+            }
+            .mode-btn {
+                padding: 6px 16px;
+                font-size: 13px;
+            }
+        }
+    </style>
 </head>
 <body>
 
-  <h1>Wirtualny Kursor Lab</h1>
-  <p class="instructions">
-    Najedź kursorem na element i <strong>zaciśnij pięść</strong>, aby kliknąć.<br>
-    Zaciśnij pięść na wolnym tle i pociągnij góra/dół, aby <strong>powoli przewijać stronę</strong>.
-  </p>
+    <!-- ===== TITLE + MODE TOGGLE ===== -->
+    <h1>🕹️ Wirtualny Kursor Lab</h1>
+    <p class="sub">Tryb <strong>Ręka</strong> → steruj kursorem i graj w minigry &nbsp;|&nbsp; Tryb <strong>Taniec</strong> → Just Dance z ciałem</p>
 
-  <!-- SEKCJA 1: MINIGRY -->
-  <div class="section-title">🎮 MINIGRY GESTOWE</div>
-  
-  <div class="grid-container">
-    <!-- GRA 1 -->
-    <div class="test-card">
-      <div class="card-title">1. Balonowy Łowca</div>
-      <div>Wynik: <strong id="bubble-score" style="color:#00ff66">0</strong></div>
-      <div id="bubble-area"></div>
-      <button class="test-btn clickable" id="btn-start-bubble">Start (30s)</button>
+    <div class="mode-bar">
+        <button class="mode-btn active" data-mode="hand" id="modeHand">✋ Ręka</button>
+        <span class="mode-indicator">│</span>
+        <button class="mode-btn" data-mode="dance" id="modeDance">💃 Taniec</button>
     </div>
 
-    <!-- GRA 2 -->
-    <div class="test-card">
-      <div class="card-title">2. Whack-A-Mole</div>
-      <div>Punkty: <strong id="mole-score" style="color:#00ff66">0</strong></div>
-      <div class="mole-grid" id="mole-grid"></div>
-      <button class="test-btn clickable" id="btn-start-mole">Start (30s)</button>
+    <!-- ===== HAND MODE CONTENT ===== -->
+    <div id="hand-section">
+        <div class="section-title">🎮 MINIGRY GESTOWE</div>
+        <div class="grid-container">
+            <!-- Gra 1 -->
+            <div class="test-card">
+                <div class="card-title">1. Balonowy Łowca</div>
+                <div>Wynik: <strong id="bubble-score" style="color:#00ff66">0</strong></div>
+                <div id="bubble-area"></div>
+                <button class="test-btn clickable" id="btn-start-bubble">Start (30s)</button>
+            </div>
+            <!-- Gra 2 -->
+            <div class="test-card">
+                <div class="card-title">2. Whack-A-Mole</div>
+                <div>Punkty: <strong id="mole-score" style="color:#00ff66">0</strong></div>
+                <div class="mole-grid" id="mole-grid"></div>
+                <button class="test-btn clickable" id="btn-start-mole">Start (30s)</button>
+            </div>
+            <!-- Gra 3 -->
+            <div class="test-card">
+                <div class="card-title">3. Pamięć (Memory)</div>
+                <div>Ruchy: <strong id="memory-moves" style="color:#3399ff">0</strong></div>
+                <div class="memory-grid" id="memory-grid"></div>
+                <button class="test-btn clickable" id="btn-reset-memory">Resetuj Karty</button>
+            </div>
+        </div>
+
+        <div class="section-title">🛠️ TESTY PRZYCISKÓW</div>
+        <div class="grid-container">
+            <div class="test-card">
+                <div class="card-title">Licznik</div>
+                <div style="font-size:28px;font-weight:bold;color:#00ff66" id="click-count">0</div>
+                <button class="test-btn clickable" id="btn-count">+1 Punkt</button>
+            </div>
+            <div class="test-card">
+                <div class="card-title">Test Alertu</div>
+                <button class="test-btn btn-danger clickable" id="btn-alert">Uruchom Alert</button>
+            </div>
+            <div class="test-card">
+                <div class="card-title">Kolor Tła</div>
+                <button class="test-btn btn-success clickable" id="btn-color">Zmień Kolor</button>
+            </div>
+        </div>
+        <p style="text-align:center;color:#555;font-size:13px;margin:20px 0 0 0;">
+            ✊ Zaciśnij pięść na elemencie → kliknij &nbsp;│&nbsp; na tle → przeciągnij góra/dół do scrollowania
+        </p>
     </div>
 
-    <!-- GRA 3 -->
-    <div class="test-card">
-      <div class="card-title">3. Pamięć (Memory)</div>
-      <div>Ruchy: <strong id="memory-moves" style="color:#3399ff">0</strong></div>
-      <div class="memory-grid" id="memory-grid"></div>
-      <button class="test-btn clickable" id="btn-reset-memory">Resetuj Karty</button>
+    <!-- ===== DANCE MODE CONTENT ===== -->
+    <div id="dance-section">
+        <div class="dance-layout">
+            <div class="dance-canvas-wrap">
+                <canvas id="danceCanvas"></canvas>
+            </div>
+            <div class="dance-side">
+                <div class="label">Twój wynik</div>
+                <div class="big-score" id="danceTotalScore">0</div>
+
+                <div class="label">Ruch</div>
+                <div class="move-name" id="danceMoveName">—</div>
+
+                <div class="progress-bar">
+                    <div class="progress-fill" id="danceProgress"></div>
+                </div>
+
+                <div class="feedback" id="danceFeedback">👋 Gotowy?</div>
+
+                <div class="dance-stats">
+                    <span>✅ <span id="danceHit">0</span></span>
+                    <span>⏱️ <span id="danceTimer">0</span>s</span>
+                    <span>🎯 <span id="danceAccuracy">0%</span></span>
+                </div>
+
+                <div class="ctrl-row">
+                    <button class="green" id="danceStartBtn">▶ Start</button>
+                    <button class="danger" id="danceResetBtn">⟳ Reset</button>
+                </div>
+                <p style="color:#666;font-size:12px;text-align:center;margin:0;">
+                    Naśladuj sylwetkę z lewej strony! Najlepsze dopasowanie = więcej punktów.
+                </p>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- SEKCJA 2: NADAJNIKI I TESTY -->
-  <div class="section-title">🛠️ TESTY PRZYCISKÓW</div>
+    <!-- ===== KAMERA + KURSOR ===== -->
+    <video id="webcam" autoplay playsinline></video>
+    <div id="virtual-cursor"></div>
 
-  <div class="grid-container">
-    <div class="test-card">
-      <div class="card-title">Licznik</div>
-      <div style="font-size: 28px; font-weight: bold; color: #00ff66" id="click-count">0</div>
-      <button class="test-btn clickable" id="btn-count">+1 Punkt</button>
-    </div>
+    <script>
+        // ================================================================
+        //  1.  ZMIENNE WSPÓLNE
+        // ================================================================
+        const cursorElement = document.getElementById('virtual-cursor');
+        const videoElement = document.getElementById('webcam');
+        const canvas = document.getElementById('danceCanvas');
+        const ctx = canvas.getContext('2d');
 
-    <div class="test-card">
-      <div class="card-title">Test Alertu</div>
-      <button class="test-btn btn-danger clickable" id="btn-alert">Uruchom Alert</button>
-    </div>
+        let currentMode = 'hand'; // 'hand' | 'dance'
+        let handModelActive = true;
+        let poseModelActive = false;
 
-    <div class="test-card">
-      <div class="card-title">Kolor Tła</div>
-      <button class="test-btn btn-success clickable" id="btn-color">Zmień Kolor</button>
-    </div>
-  </div>
+        // --- kursor ---
+        let currentX = window.innerWidth / 2;
+        let currentY = window.innerHeight / 2;
+        let targetX = currentX;
+        let targetY = currentY;
+        let isFistClosed = false;
+        let isDragging = false;
+        let dragStartY = 0;
+        let startScrollY = 0;
+        const SMOOTHING_FACTOR = 0.35;
+        const SCROLL_SENSITIVITY = 300;
+        let cachedClickables = [];
 
-  <video id="webcam" autoplay playsinline></video>
-  <div id="virtual-cursor"></div>
-
-  <script>
-    // --- 1. ZMIENNE KURSORA I WYDAJNOŚCI ---
-    const cursorElement = document.getElementById('virtual-cursor');
-    const videoElement = document.getElementById('webcam');
-
-    let currentX = window.innerWidth / 2;
-    let currentY = window.innerHeight / 2;
-    let targetX = currentX;
-    let targetY = currentY;
-
-    let isFistClosed = false;
-    let isDragging = false;
-    let dragStartY = 0;
-    let startScrollY = 0;
-
-    const SMOOTHING_FACTOR = 0.35; 
-    const SCROLL_SENSITIVITY = 300; 
-
-    // Cache elementów klikalnych do optymalizacji pętli
-    let cachedClickables = [];
-    function updateClickablesCache() {
-      cachedClickables = Array.from(document.querySelectorAll('.clickable'));
-    }
-
-    // --- 2. LOGIKA GRA 1: BUBBLE POP ---
-    let bubbleScore = 0;
-    let bubbleTimer = null;
-    const bubbleArea = document.getElementById('bubble-area');
-
-    document.getElementById('btn-start-bubble').addEventListener('click', () => {
-      bubbleScore = 0;
-      document.getElementById('bubble-score').innerText = bubbleScore;
-      spawnBubble();
-      clearTimeout(bubbleTimer);
-      bubbleTimer = setTimeout(() => {
-        bubbleArea.innerHTML = '';
-        alert("Koniec czasu! Twój wynik: " + bubbleScore);
-        updateClickablesCache();
-      }, 30000);
-    });
-
-    function spawnBubble() {
-      bubbleArea.innerHTML = '';
-      const b = document.createElement('div');
-      b.className = 'bubble clickable';
-      b.style.left = Math.random() * (bubbleArea.clientWidth - 50) + 'px';
-      b.style.top = Math.random() * (bubbleArea.clientHeight - 50) + 'px';
-      
-      b.onclick = () => {
-        bubbleScore++;
-        document.getElementById('bubble-score').innerText = bubbleScore;
-        spawnBubble();
-        updateClickablesCache();
-      };
-
-      bubbleArea.appendChild(b);
-      updateClickablesCache();
-    }
-
-    // --- 3. LOGIKA GRA 2: WHACK-A-MOLE ---
-    let moleScore = 0;
-    let moleTimer = null;
-    let moleInterval = null;
-    const moleGrid = document.getElementById('mole-grid');
-
-    for (let i = 0; i < 9; i++) {
-      const hole = document.createElement('div');
-      hole.className = 'mole-hole';
-      hole.dataset.id = i;
-      moleGrid.appendChild(hole);
-    }
-
-    document.getElementById('btn-start-mole').addEventListener('click', () => {
-      moleScore = 0;
-      document.getElementById('mole-score').innerText = moleScore;
-      clearInterval(moleInterval);
-      clearTimeout(moleTimer);
-
-      moleInterval = setInterval(showRandomMole, 1800);
-      moleTimer = setTimeout(() => {
-        clearInterval(moleInterval);
-        clearHoles();
-        alert("Koniec gry! Trafione krety: " + moleScore);
-      }, 30000);
-    });
-
-    function clearHoles() {
-      document.querySelectorAll('.mole-hole').forEach(h => {
-        h.innerHTML = '';
-        h.classList.remove('clickable');
-        h.onclick = null;
-      });
-      updateClickablesCache();
-    }
-
-    function showRandomMole() {
-      clearHoles();
-      const holes = document.querySelectorAll('.mole-hole');
-      const randomHole = holes[Math.floor(Math.random() * holes.length)];
-      randomHole.innerHTML = '🐹';
-      randomHole.classList.add('clickable');
-      
-      randomHole.onclick = () => {
-        moleScore++;
-        document.getElementById('mole-score').innerText = moleScore;
-        randomHole.innerHTML = '💥';
-        randomHole.classList.remove('clickable');
-        randomHole.onclick = null;
-        updateClickablesCache();
-      };
-
-      updateClickablesCache();
-    }
-
-    // --- 4. LOGIKA GRA 3: MEMORY MATCH ---
-    const memoryGrid = document.getElementById('memory-grid');
-    const icons = ['🍕', '🍕', '🚀', '🚀', '🐱', '🐱', '🎮', '🎮'];
-    let flippedCards = [];
-    let moves = 0;
-
-    function initMemoryGame() {
-      memoryGrid.innerHTML = '';
-      moves = 0;
-      document.getElementById('memory-moves').innerText = moves;
-      const shuffled = [...icons].sort(() => Math.random() - 0.5);
-
-      shuffled.forEach(icon => {
-        const card = document.createElement('div');
-        card.className = 'memory-card clickable';
-        card.dataset.icon = icon;
-        card.innerText = icon;
-
-        card.addEventListener('click', () => {
-          if (flippedCards.length < 2 && !card.classList.contains('flipped')) {
-            card.classList.add('flipped');
-            flippedCards.push(card);
-
-            if (flippedCards.length === 2) {
-              moves++;
-              document.getElementById('memory-moves').innerText = moves;
-              checkMemoryMatch();
-            }
-          }
-        });
-
-        memoryGrid.appendChild(card);
-      });
-      updateClickablesCache();
-    }
-
-    function checkMemoryMatch() {
-      const [c1, c2] = flippedCards;
-      if (c1.dataset.icon === c2.dataset.icon) {
-        c1.classList.remove('clickable');
-        c2.classList.remove('clickable');
-        flippedCards = [];
-        updateClickablesCache();
-      } else {
-        setTimeout(() => {
-          c1.classList.remove('flipped');
-          c2.classList.remove('flipped');
-          flippedCards = [];
-        }, 800);
-      }
-    }
-
-    document.getElementById('btn-reset-memory').addEventListener('click', initMemoryGame);
-    initMemoryGame();
-
-    // --- 5. POZOSTAŁE FUNKCJE TESTOWE ---
-    let counterValue = 0;
-    document.getElementById('btn-count').addEventListener('click', () => {
-      counterValue++;
-      document.getElementById('click-count').innerText = counterValue;
-    });
-    document.getElementById('btn-alert').addEventListener('click', () => {
-      alert("Test alertu zakończony sukcesem!");
-    });
-    document.getElementById('btn-color').addEventListener('click', () => {
-      document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' : '#29112f';
-    });
-
-    // --- 6. SILNIK PRZETWARZANIA GESTÓW (MEDIAPIPE) ---
-    function onResults(results) {
-      const detectedHands = results.multiHandLandmarks || [];
-      const windowWidth = window.innerWidth;
-      const windowHeight = window.innerHeight;
-
-      if (detectedHands.length > 0) {
-        const hand = detectedHands[0];
-        const handAnchor = hand[9]; 
-
-        cursorElement.style.display = 'block';
-
-        targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.1) / 0.8 * windowWidth));
-        targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.1) / 0.8 * windowHeight));
-
-        const isIndexClosed  = hand[8].y  > hand[6].y;
-        const isMiddleClosed = hand[12].y > hand[10].y;
-        const isRingClosed   = hand[16].y > hand[14].y;
-        const isPinkyClosed  = hand[20].y > hand[18].y;
-        const currentFistState = isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed;
-
-        let hoveredElement = null;
-        cachedClickables.forEach(btn => {
-          const rect = btn.getBoundingClientRect();
-          if (currentX >= rect.left && currentX <= rect.right && 
-              currentY >= rect.top && currentY <= rect.bottom) {
-            btn.classList.add('hovered');
-            hoveredElement = btn;
-          } else {
-            btn.classList.remove('hovered');
-          }
-        });
-
-        if (currentFistState) {
-          if (!isFistClosed) {
-            isFistClosed = true;
-            if (hoveredElement) {
-              cursorElement.classList.add('clicking');
-              hoveredElement.click();
-            } else {
-              isDragging = true;
-              dragStartY = handAnchor.y;
-              startScrollY = window.scrollY;
-              cursorElement.classList.add('dragging');
-            }
-          } else if (isDragging) {
-            const deltaY = (handAnchor.y - dragStartY) * SCROLL_SENSITIVITY;
-            window.scrollTo({
-              top: startScrollY - deltaY,
-              left: 0,
-              behavior: 'instant'
-            });
-          }
-        } else {
-          isFistClosed = false;
-          isDragging = false;
-          cursorElement.classList.remove('clicking', 'dragging');
+        function updateClickablesCache() {
+            cachedClickables = Array.from(document.querySelectorAll('.clickable'));
         }
-      } else {
-        cursorElement.style.display = 'none';
-        isFistClosed = false;
-        isDragging = false;
-      }
-    }
 
-    // --- 7. PĘTLA ANIMACJI KURSORA ---
-    function updateCursorAnimation() {
-      currentX += (targetX - currentX) * SMOOTHING_FACTOR;
-      currentY += (targetY - currentY) * SMOOTHING_FACTOR;
+        // --- kamera ---
+        let cameraInstance = null;
 
-      cursorElement.style.left = `${currentX}px`;
-      cursorElement.style.top = `${currentY}px`;
+        // ================================================================
+        //  2.  HAND MODE – LOGIKA GIER (pozostawiamy bez zmian)
+        // ================================================================
+        // Bubble
+        let bubbleScore = 0,
+            bubbleTimer = null;
+        const bubbleArea = document.getElementById('bubble-area');
 
-      requestAnimationFrame(updateCursorAnimation);
-    }
-    requestAnimationFrame(updateCursorAnimation);
+        document.getElementById('btn-start-bubble').addEventListener('click', () => {
+            bubbleScore = 0;
+            document.getElementById('bubble-score').innerText = bubbleScore;
+            spawnBubble();
+            clearTimeout(bubbleTimer);
+            bubbleTimer = setTimeout(() => {
+                bubbleArea.innerHTML = '';
+                alert('Koniec czasu! Wynik: ' + bubbleScore);
+                updateClickablesCache();
+            }, 30000);
+        });
 
-    updateClickablesCache();
+        function spawnBubble() {
+            bubbleArea.innerHTML = '';
+            const b = document.createElement('div');
+            b.className = 'bubble clickable';
+            const w = bubbleArea.clientWidth || 200;
+            const h = bubbleArea.clientHeight || 150;
+            b.style.left = Math.random() * (w - 50) + 'px';
+            b.style.top = Math.random() * (h - 50) + 'px';
+            b.onclick = () => {
+                bubbleScore++;
+                document.getElementById('bubble-score').innerText = bubbleScore;
+                spawnBubble();
+                updateClickablesCache();
+            };
+            bubbleArea.appendChild(b);
+            updateClickablesCache();
+        }
 
-    // --- 8. INICJALIZACJA MODELU MEDIAPIPE ---
-    const hands = new Hands({
-      locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-    });
+        // Mole
+        let moleScore = 0,
+            moleTimer = null,
+            moleInterval = null;
+        const moleGrid = document.getElementById('mole-grid');
+        for (let i = 0; i < 9; i++) {
+            const d = document.createElement('div');
+            d.className = 'mole-hole';
+            d.dataset.id = i;
+            moleGrid.appendChild(d);
+        }
+        document.getElementById('btn-start-mole').addEventListener('click', () => {
+            moleScore = 0;
+            document.getElementById('mole-score').innerText = moleScore;
+            clearInterval(moleInterval);
+            clearTimeout(moleTimer);
+            moleInterval = setInterval(showRandomMole, 1800);
+            moleTimer = setTimeout(() => {
+                clearInterval(moleInterval);
+                clearHoles();
+                alert('Koniec gry! Trafione: ' + moleScore);
+            }, 30000);
+        });
 
-    hands.setOptions({
-      maxNumHands: 1,           
-      modelComplexity: 1,       
-      minDetectionConfidence: 0.7, 
-      minTrackingConfidence: 0.7
-    });
+        function clearHoles() {
+            document.querySelectorAll('.mole-hole').forEach(h => { h.innerHTML = '';
+                h.classList.remove('clickable');
+                h.onclick = null; });
+            updateClickablesCache();
+        }
 
-    hands.onResults(onResults);
+        function showRandomMole() {
+            clearHoles();
+            const holes = document.querySelectorAll('.mole-hole');
+            const rh = holes[Math.floor(Math.random() * holes.length)];
+            rh.innerHTML = '🐹';
+            rh.classList.add('clickable');
+            rh.onclick = () => {
+                moleScore++;
+                document.getElementById('mole-score').innerText = moleScore;
+                rh.innerHTML = '💥';
+                rh.classList.remove('clickable');
+                rh.onclick = null;
+                updateClickablesCache();
+            };
+            updateClickablesCache();
+        }
 
-    const camera = new Camera(videoElement, {
-      onFrame: async () => {
-        await hands.send({image: videoElement});
-      },
-      width: 640,
-      height: 480
-    });
+        // Memory
+        const memoryGrid = document.getElementById('memory-grid');
+        const icons = ['🍕', '🍕', '🚀', '🚀', '🐱', '🐱', '🎮', '🎮'];
+        let flippedCards = [],
+            moves = 0;
 
-    camera.start();
-  </script>
+        function initMemoryGame() {
+            memoryGrid.innerHTML = '';
+            moves = 0;
+            document.getElementById('memory-moves').innerText = moves;
+            const shuffled = [...icons].sort(() => Math.random() - 0.5);
+            shuffled.forEach(icon => {
+                const card = document.createElement('div');
+                card.className = 'memory-card clickable';
+                card.dataset.icon = icon;
+                card.innerText = icon;
+                card.addEventListener('click', () => {
+                    if (flippedCards.length < 2 && !card.classList.contains('flipped')) {
+                        card.classList.add('flipped');
+                        flippedCards.push(card);
+                        if (flippedCards.length === 2) {
+                            moves++;
+                            document.getElementById('memory-moves').innerText = moves;
+                            checkMemoryMatch();
+                        }
+                    }
+                });
+                memoryGrid.appendChild(card);
+            });
+            updateClickablesCache();
+        }
+
+        function checkMemoryMatch() {
+            const [c1, c2] = flippedCards;
+            if (c1.dataset.icon === c2.dataset.icon) {
+                c1.classList.remove('clickable');
+                c2.classList.remove('clickable');
+                flippedCards = [];
+                updateClickablesCache();
+            } else {
+                setTimeout(() => {
+                    c1.classList.remove('flipped');
+                    c2.classList.remove('flipped');
+                    flippedCards = [];
+                }, 800);
+            }
+        }
+        document.getElementById('btn-reset-memory').addEventListener('click', initMemoryGame);
+        initMemoryGame();
+
+        // Test buttons
+        let counterValue = 0;
+        document.getElementById('btn-count').addEventListener('click', () => {
+            counterValue++;
+            document.getElementById('click-count').innerText = counterValue;
+        });
+        document.getElementById('btn-alert').addEventListener('click', () => { alert('Test alertu!'); });
+        document.getElementById('btn-color').addEventListener('click', () => {
+            document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' :
+                '#29112f';
+        });
+
+        // ================================================================
+        //  3.  HAND TRACKING (MediaPipe Hands)
+        // ================================================================
+        let handsInstance = null;
+        let handResultsFn = null;
+
+        function initHands() {
+            if (handsInstance) {
+                handsInstance.close();
+                handsInstance = null;
+            }
+            handsInstance = new Hands({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
+            });
+            handsInstance.setOptions({
+                maxNumHands: 1,
+                modelComplexity: 1,
+                minDetectionConfidence: 0.7,
+                minTrackingConfidence: 0.7
+            });
+
+            handResultsFn = (results) => {
+                if (currentMode !== 'hand') return;
+                const detected = results.multiHandLandmarks || [];
+                const ww = window.innerWidth,
+                    wh = window.innerHeight;
+                if (detected.length > 0) {
+                    const hand = detected[0];
+                    const anchor = hand[9];
+                    cursorElement.style.display = 'block';
+                    targetX = Math.max(0, Math.min(ww, ((1 - anchor.x) - 0.1) / 0.8 * ww));
+                    targetY = Math.max(0, Math.min(wh, (anchor.y - 0.1) / 0.8 * wh));
+
+                    const idx = hand[8].y > hand[6].y;
+                    const mid = hand[12].y > hand[10].y;
+                    const ring = hand[16].y > hand[14].y;
+                    const pink = hand[20].y > hand[18].y;
+                    const fist = idx && mid && ring && pink;
+
+                    let hovered = null;
+                    cachedClickables.forEach(btn => {
+                        const r = btn.getBoundingClientRect();
+                        if (currentX >= r.left && currentX <= r.right &&
+                            currentY >= r.top && currentY <= r.bottom) {
+                            btn.classList.add('hovered');
+                            hovered = btn;
+                        } else {
+                            btn.classList.remove('hovered');
+                        }
+                    });
+
+                    if (fist) {
+                        if (!isFistClosed) {
+                            isFistClosed = true;
+                            if (hovered) {
+                                cursorElement.classList.add('clicking');
+                                hovered.click();
+                            } else {
+                                isDragging = true;
+                                dragStartY = anchor.y;
+                                startScrollY = window.scrollY;
+                                cursorElement.classList.add('dragging');
+                            }
+                        } else if (isDragging) {
+                            const dy = (anchor.y - dragStartY) * SCROLL_SENSITIVITY;
+                            window.scrollTo({ top: startScrollY - dy, left: 0, behavior: 'instant' });
+                        }
+                    } else {
+                        isFistClosed = false;
+                        isDragging = false;
+                        cursorElement.classList.remove('clicking', 'dragging');
+                    }
+                } else {
+                    cursorElement.style.display = 'none';
+                    isFistClosed = false;
+                    isDragging = false;
+                }
+            };
+            handsInstance.onResults(handResultsFn);
+        }
+
+        // ================================================================
+        //  4.  DANCE MODE – MediaPipe Pose
+        // ================================================================
+        let poseInstance = null;
+        let poseResultsFn = null;
+        let latestPose = null; // przechowuje ostatnie landmarky
+
+        function initPose() {
+            if (poseInstance) {
+                poseInstance.close();
+                poseInstance = null;
+            }
+            poseInstance = new Pose({
+                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
+            });
+            poseInstance.setOptions({
+                modelComplexity: 1,
+                smoothLandmarks: true,
+                minDetectionConfidence: 0.6,
+                minTrackingConfidence: 0.6
+            });
+            poseResultsFn = (results) => {
+                if (currentMode !== 'dance') return;
+                if (results.poseLandmarks) {
+                    latestPose = results.poseLandmarks;
+                } else {
+                    latestPose = null;
+                }
+                // rysowanie na canvasie odbywa się w pętli animacji
+            };
+            poseInstance.onResults(poseResultsFn);
+        }
+
+        // ================================================================
+        //  5.  DANCE GAME – logika
+        // ================================================================
+        const dance = {
+            moves: [],
+            currentIndex: 0,
+            score: 0,
+            totalScore: 0,
+            hits: 0,
+            totalAttempts: 0,
+            isRunning: false,
+            isCountingDown: false,
+            timer: 0,
+            maxTimer: 3.5, // sekund na ruch
+            progress: 0,
+            feedback: '👋 Gotowy?',
+            moveName: '—',
+            accuracy: 0,
+            // target pose jako znormalizowane współrzędne kluczowych punktów
+            // używamy: 0=nos, 11=lewe_ramie, 12=prawe_ramie, 13=lewy_łokieć, 14=prawy_łokieć,
+            // 15=lewy_nadgarstek, 16=prawy_nadgarstek, 23=lewy_biodro, 24=prawy_biodro
+        };
+
+        // Definicje ruchów tanecznych (współrzędne znormalizowane względem środka ramion)
+        // Każdy ruch to obiekt: { name, targets: { idx: {x, y} } }
+        // gdzie idx to numer landmarku, a x,y w skali [-1..1] (środek = 0, szerokość ramion = 1)
+        function buildDanceMoves() {
+            return [{
+                name: '🙌 Ręce w górę',
+                targets: {
+                    15: { x: -0.55, y: -0.75 },
+                    16: { x: 0.55, y: -0.75 },
+                    13: { x: -0.50, y: -0.25 },
+                    14: { x: 0.50, y: -0.25 }
+                }
+            }, {
+                name: '💪 T-Pose',
+                targets: {
+                    15: { x: -1.20, y: 0.00 },
+                    16: { x: 1.20, y: 0.00 },
+                    13: { x: -0.75, y: 0.00 },
+                    14: { x: 0.75, y: 0.00 }
+                }
+            }, {
+                name: '👉 Prawa w górę',
+                targets: {
+                    15: { x: -0.50, y: 0.25 },
+                    16: { x: 0.55, y: -0.75 },
+                    13: { x: -0.45, y: 0.00 },
+                    14: { x: 0.50, y: -0.25 }
+                }
+            }, {
+                name: '👈 Lewa w górę',
+                targets: {
+                    15: { x: -0.55, y: -0.75 },
+                    16: { x: 0.50, y: 0.25 },
+                    13: { x: -0.50, y: -0.25 },
+                    14: { x: 0.45, y: 0.00 }
+                }
+            }, {
+                name: '🤝 Skrzyżowane',
+                targets: {
+                    15: { x: 0.30, y: -0.15 },
+                    16: { x: -0.30, y: -0.15 },
+                    13: { x: -0.30, y: -0.05 },
+                    14: { x: 0.30, y: -0.05 }
+                }
+            }, {
+                name: '🕺 Ręce na biodrach',
+                targets: {
+                    15: { x: -0.35, y: 0.45 },
+                    16: { x: 0.35, y: 0.45 },
+                    13: { x: -0.50, y: 0.30 },
+                    14: { x: 0.50, y: 0.30 }
+                }
+            }, {
+                name: '🎭 Jazz',
+                targets: {
+                    15: { x: -1.10, y: 0.15 },
+                    16: { x: 1.10, y: 0.15 },
+                    13: { x: -0.70, y: -0.10 },
+                    14: { x: 0.70, y: -0.10 }
+                }
+            }, {
+                name: '💥 Cios w prawo',
+                targets: {
+                    15: { x: -0.40, y: 0.00 },
+                    16: { x: 0.80, y: -0.30 },
+                    13: { x: -0.35, y: -0.10 },
+                    14: { x: 0.30, y: -0.20 }
+                }
+            }];
+        }
+
+        // Normalizuje landmarki: środek ramion -> (0,0), szerokość ramion -> 1
+        function normalizePose(landmarks) {
+            if (!landmarks || landmarks.length < 25) return null;
+            const ls = landmarks[11],
+                rs = landmarks[12];
+            const cx = (ls.x + rs.x) / 2,
+                cy = (ls.y + rs.y) / 2;
+            const sw = Math.sqrt((rs.x - ls.x) ** 2 + (rs.y - ls.y) ** 2) || 0.3;
+            const result = {};
+            const idxs = [0, 11, 12, 13, 14, 15, 16, 23, 24];
+            for (const i of idxs) {
+                const p = landmarks[i];
+                result[i] = { x: (p.x - cx) / sw, y: (p.y - cy) / sw };
+            }
+            return result;
+        }
+
+        // Porównuje pozę użytkownika z docelową
+        function comparePose(userNorm, target) {
+            if (!userNorm) return 1.0;
+            const keys = [13, 14, 15, 16]; // łokcie i nadgarstki
+            let totalDist = 0,
+                count = 0;
+            for (const k of keys) {
+                if (userNorm[k] && target[k]) {
+                    const dx = userNorm[k].x - target[k].x;
+                    const dy = userNorm[k].y - target[k].y;
+                    totalDist += Math.sqrt(dx * dx + dy * dy);
+                    count++;
+                }
+            }
+            if (count === 0) return 1.0;
+            const avg = totalDist / count;
+            // im mniejszy dystans tym lepiej, skalujemy do 0-1
+            const score = Math.max(0, Math.min(1, 1 - avg * 0.6));
+            return score;
+        }
+
+        // Rysowanie na canvasie
+        function drawDanceFrame() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            const w = rect.width || 640;
+            const h = rect.height || 480;
+            canvas.width = w * dpr;
+            canvas.height = h * dpr;
+            canvas.style.width = w + 'px';
+            canvas.style.height = h + 'px';
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.scale(dpr, dpr);
+
+            // tło
+            ctx.fillStyle = '#0b0b0e';
+            ctx.fillRect(0, 0, w, h);
+
+            // podział: lewa połowa → cel, prawa połowa → użytkownik
+            const midX = w / 2;
+
+            // ---- Rysuj cel (po lewej) ----
+            ctx.save();
+            ctx.translate(midX / 2, h / 2);
+            const scale = Math.min(w, h) * 0.22;
+            if (dance.moves.length > 0 && dance.currentIndex < dance.moves.length) {
+                const move = dance.moves[dance.currentIndex];
+                drawStickFigure(ctx, move.targets, scale, '#66ddff', '#3399ff');
+                // nazwa ruchu
+                ctx.fillStyle = '#66ddff';
+                ctx.font = 'bold 18px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText(move.name, 0, -scale * 1.35);
+            }
+            ctx.restore();
+
+            // ---- Rysuj użytkownika (po prawej) ----
+            ctx.save();
+            ctx.translate(midX + midX / 2, h / 2);
+            if (latestPose) {
+                const norm = normalizePose(latestPose);
+                if (norm) {
+                    drawStickFigure(ctx, norm, scale, '#ffdd44', '#ff8833');
+                    // mała etykieta
+                    ctx.fillStyle = '#ffdd44';
+                    ctx.font = 'bold 14px Segoe UI, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('TY', 0, -scale * 1.35);
+                } else {
+                    ctx.fillStyle = '#666';
+                    ctx.font = '20px Segoe UI, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('⏳ Brak sylwetki', 0, 0);
+                }
+            } else {
+                ctx.fillStyle = '#666';
+                ctx.font = '20px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('⏳ Oczekiwanie na kamerę...', 0, 0);
+            }
+            ctx.restore();
+
+            // ---- linia podziału ----
+            ctx.strokeStyle = '#2d2d35';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([6, 6]);
+            ctx.beginPath();
+            ctx.moveTo(midX, 0);
+            ctx.lineTo(midX, h);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // ---- etykiety ----
+            ctx.fillStyle = '#555';
+            ctx.font = '12px Segoe UI, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('👤 WZÓR', midX / 2, h - 14);
+            ctx.fillText('📸 TWOJA POZA', midX + midX / 2, h - 14);
+
+            // ---- feedback na canvasie ----
+            if (dance.isRunning || dance.isCountingDown) {
+                ctx.fillStyle = 'rgba(0,0,0,0.5)';
+                ctx.fillRect(0, 0, w, 40);
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 20px Segoe UI, sans-serif';
+                ctx.textAlign = 'center';
+                let txt = dance.moveName || '—';
+                if (dance.isCountingDown) txt = '⏳ ' + Math.ceil(dance.timer) + 's';
+                ctx.fillText(txt, w / 2, 28);
+            }
+        }
+
+        // Rysuje sylwetkę (stick figure) z podanych punktów
+        function drawStickFigure(ctx, pts, scale, color, jointColor) {
+            if (!pts) return;
+            const get = (idx) => pts[idx] ? { x: pts[idx].x * scale, y: pts[idx].y * scale } : null;
+
+            const head = get(0);
+            const ls = get(11),
+                rs = get(12);
+            const le = get(13),
+                re = get(14);
+            const lw = get(15),
+                rw = get(16);
+            const lh = get(23),
+                rh = get(24);
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3.5;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.shadowColor = color + '40';
+            ctx.shadowBlur = 12;
+
+            // głowa (kółko)
+            if (head) {
+                ctx.beginPath();
+                ctx.arc(head.x, head.y, scale * 0.12, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+
+            // tułów
+            if (ls && rs && lh && rh) {
+                const cy = (ls.y + rs.y + lh.y + rh.y) / 4;
+                ctx.beginPath();
+                ctx.moveTo((ls.x + rs.x) / 2, (ls.y + rs.y) / 2);
+                ctx.lineTo((lh.x + rh.x) / 2, (lh.y + rh.y) / 2);
+                ctx.stroke();
+                // ramiona
+                ctx.beginPath();
+                ctx.moveTo(ls.x, ls.y);
+                ctx.lineTo(rs.x, rs.y);
+                ctx.stroke();
+                // biodra
+                ctx.beginPath();
+                ctx.moveTo(lh.x, lh.y);
+                ctx.lineTo(rh.x, rh.y);
+                ctx.stroke();
+            }
+
+            // lewe ramię
+            if (ls && le && lw) {
+                ctx.beginPath();
+                ctx.moveTo(ls.x, ls.y);
+                ctx.lineTo(le.x, le.y);
+                ctx.lineTo(lw.x, lw.y);
+                ctx.stroke();
+            }
+            // prawe ramię
+            if (rs && re && rw) {
+                ctx.beginPath();
+                ctx.moveTo(rs.x, rs.y);
+                ctx.lineTo(re.x, re.y);
+                ctx.lineTo(rw.x, rw.y);
+                ctx.stroke();
+            }
+
+            // stawy (joints)
+            ctx.shadowBlur = 0;
+            const joints = [head, ls, rs, le, re, lw, rw, lh, rh];
+            for (const j of joints) {
+                if (j) {
+                    ctx.fillStyle = jointColor || color;
+                    ctx.beginPath();
+                    ctx.arc(j.x, j.y, scale * 0.045, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.shadowBlur = 0;
+        }
+
+        // ================================================================
+        //  6.  DANCE GAME – sterowanie
+        // ================================================================
+        let danceAnimFrame = null;
+        let danceInterval = null;
+
+        function stopDanceGame() {
+            dance.isRunning = false;
+            dance.isCountingDown = false;
+            clearInterval(danceInterval);
+            danceInterval = null;
+            document.getElementById('danceStartBtn').disabled = false;
+        }
+
+        function startDanceGame() {
+            if (dance.isRunning || dance.isCountingDown) return;
+            dance.moves = buildDanceMoves();
+            dance.currentIndex = 0;
+            dance.totalScore = 0;
+            dance.hits = 0;
+            dance.totalAttempts = 0;
+            dance.score = 0;
+            dance.timer = dance.maxTimer;
+            dance.progress = 0;
+            dance.feedback = '👋 Przygotuj się!';
+            document.getElementById('danceTotalScore').innerText = '0';
+            document.getElementById('danceHit').innerText = '0';
+            document.getElementById('danceAccuracy').innerText = '0%';
+            document.getElementById('danceTimer').innerText = '0';
+            document.getElementById('danceMoveName').innerText = '—';
+            document.getElementById('danceProgress').style.width = '0%';
+            document.getElementById('danceFeedback').innerText = '⏳ 3...';
+            document.getElementById('danceStartBtn').disabled = true;
+
+            // countdown 3-2-1
+            let count = 3;
+            dance.isCountingDown = true;
+            const cdInterval = setInterval(() => {
+                if (count > 0) {
+                    document.getElementById('danceFeedback').innerText = '⏳ ' + count + '...';
+                    count--;
+                } else {
+                    clearInterval(cdInterval);
+                    dance.isCountingDown = false;
+                    document.getElementById('danceFeedback').innerText = '🎵 Taniec!';
+                    // rozpocznij grę
+                    dance.isRunning = true;
+                    dance.currentIndex = 0;
+                    dance.timer = dance.maxTimer;
+                    showDanceMove(0);
+                    // interwał aktualizacji
+                    danceInterval = setInterval(updateDanceTick, 120);
+                }
+            }, 700);
+        }
+
+        function showDanceMove(index) {
+            if (index >= dance.moves.length) {
+                endDanceGame();
+                return;
+            }
+            const move = dance.moves[index];
+            dance.moveName = move.name;
+            dance.timer = dance.maxTimer;
+            dance.progress = 0;
+            document.getElementById('danceMoveName').innerText = move.name;
+            document.getElementById('danceFeedback').innerText = '💃 Naśladuj!';
+            document.getElementById('danceProgress').style.width = '0%';
+            // reset wyniku dla tego ruchu
+            dance.score = 0;
+        }
+
+        function updateDanceTick() {
+            if (!dance.isRunning) return;
+
+            dance.timer -= 0.12;
+            dance.progress = Math.max(0, (dance.maxTimer - dance.timer) / dance.maxTimer);
+            document.getElementById('danceProgress').style.width = (dance.progress * 100) + '%';
+            document.getElementById('danceTimer').innerText = Math.ceil(dance.timer);
+
+            // ocena pozy w tym momencie
+            if (latestPose) {
+                const norm = normalizePose(latestPose);
+                if (norm) {
+                    const move = dance.moves[dance.currentIndex];
+                    const sim = comparePose(norm, move.targets);
+                    const pts = Math.round(sim * 100);
+                    dance.score = Math.max(dance.score, pts);
+                    dance.totalAttempts++;
+                    if (sim > 0.55) {
+                        dance.hits++;
+                        document.getElementById('danceFeedback').innerHTML = '✅ <span style="color:#66ff88;">' + pts +
+                            '%</span>';
+                    } else {
+                        document.getElementById('danceFeedback').innerHTML = '🔄 <span style="color:#ff8866;">' + pts +
+                            '%</span>';
+                    }
+                    // aktualizuj dokładność
+                    const acc = dance.totalAttempts > 0 ? Math.round((dance.hits / dance.totalAttempts) * 100) : 0;
+                    document.getElementById('danceAccuracy').innerText = acc + '%';
+                }
+            }
+
+            // koniec ruchu?
+            if (dance.timer <= 0) {
+                // zapisz wynik
+                dance.totalScore += dance.score;
+                document.getElementById('danceTotalScore').innerText = dance.totalScore;
+                document.getElementById('danceHit').innerText = dance.hits;
+
+                // przejdź do następnego
+                dance.currentIndex++;
+                if (dance.currentIndex >= dance.moves.length) {
+                    endDanceGame();
+                } else {
+                    showDanceMove(dance.currentIndex);
+                    document.getElementById('danceFeedback').innerText = '⏭️ Następny!';
+                }
+            }
+        }
+
+        function endDanceGame() {
+            stopDanceGame();
+            dance.isRunning = false;
+            document.getElementById('danceFeedback').innerHTML = '🏆 <span style="color:#ffdd44;">KONIEC! Wynik: ' + dance
+                .totalScore + ' pkt</span>';
+            document.getElementById('danceMoveName').innerText = '🎉 Ukończono!';
+            document.getElementById('danceStartBtn').disabled = false;
+            document.getElementById('danceProgress').style.width = '100%';
+            // zapisz finalną dokładność
+            const acc = dance.totalAttempts > 0 ? Math.round((dance.hits / dance.totalAttempts) * 100) : 0;
+            document.getElementById('danceAccuracy').innerText = acc + '%';
+        }
+
+        function resetDanceGame() {
+            stopDanceGame();
+            dance.isRunning = false;
+            dance.isCountingDown = false;
+            dance.currentIndex = 0;
+            dance.totalScore = 0;
+            dance.hits = 0;
+            dance.totalAttempts = 0;
+            dance.score = 0;
+            dance.timer = dance.maxTimer;
+            dance.progress = 0;
+            dance.moves = buildDanceMoves();
+            document.getElementById('danceTotalScore').innerText = '0';
+            document.getElementById('danceHit').innerText = '0';
+            document.getElementById('danceAccuracy').innerText = '0%';
+            document.getElementById('danceTimer').innerText = '0';
+            document.getElementById('danceMoveName').innerText = '—';
+            document.getElementById('danceProgress').style.width = '0%';
+            document.getElementById('danceFeedback').innerText = '🔄 Zresetowano. Kliknij Start!';
+            document.getElementById('danceStartBtn').disabled = false;
+        }
+
+        // ================================================================
+        //  7.  PĘTLA ANIMACJI KURSORA (hand mode)
+        // ================================================================
+        function updateCursorAnimation() {
+            currentX += (targetX - currentX) * SMOOTHING_FACTOR;
+            currentY += (targetY - currentY) * SMOOTHING_FACTOR;
+            cursorElement.style.left = currentX + 'px';
+            cursorElement.style.top = currentY + 'px';
+            requestAnimationFrame(updateCursorAnimation);
+        }
+        requestAnimationFrame(updateCursorAnimation);
+        updateClickablesCache();
+
+        // ================================================================
+        //  8.  PĘTLA RYSOWANIA DANCE
+        // ================================================================
+        function danceRenderLoop() {
+            if (currentMode === 'dance') {
+                drawDanceFrame();
+            }
+            requestAnimationFrame(danceRenderLoop);
+        }
+        danceRenderLoop();
+
+        // ================================================================
+        //  9.  KAMERA – współdzielona
+        // ================================================================
+        function startCamera() {
+            if (cameraInstance) {
+                cameraInstance.stop();
+                cameraInstance = null;
+            }
+            cameraInstance = new Camera(videoElement, {
+                onFrame: async () => {
+                    if (currentMode === 'hand' && handsInstance) {
+                        await handsInstance.send({ image: videoElement });
+                    } else if (currentMode === 'dance' && poseInstance) {
+                        await poseInstance.send({ image: videoElement });
+                    }
+                },
+                width: 640,
+                height: 480
+            });
+            cameraInstance.start();
+        }
+
+        // ================================================================
+        //  10.  PRZEŁĄCZANIE TRYBÓW
+        // ================================================================
+        function setMode(mode) {
+            currentMode = mode;
+            document.getElementById('modeHand').classList.toggle('active', mode === 'hand');
+            document.getElementById('modeDance').classList.toggle('active', mode === 'dance');
+
+            document.getElementById('hand-section').style.display = (mode === 'hand') ? 'block' : 'none';
+            document.getElementById('dance-section').classList.toggle('active', mode === 'dance');
+
+            cursorElement.style.display = (mode === 'hand') ? 'block' : 'none';
+
+            // zatrzymaj grę jeśli przełączono
+            if (mode === 'hand') {
+                stopDanceGame();
+            }
+
+            // restart kamery z odpowiednim modelem
+            // (camera zostanie zrestartowana przez startCamera)
+            // ale musimy ponownie zainicjować odpowiedni model
+            if (mode === 'hand') {
+                if (!handsInstance) initHands();
+                poseModelActive = false;
+                handModelActive = true;
+            } else {
+                if (!poseInstance) initPose();
+                handModelActive = false;
+                poseModelActive = true;
+                // reset gry jeśli nie jest uruchomiona
+                if (!dance.isRunning && !dance.isCountingDown) {
+                    resetDanceGame();
+                }
+            }
+            // restart kamery
+            startCamera();
+        }
+
+        // Przyciski trybów
+        document.getElementById('modeHand').addEventListener('click', () => setMode('hand'));
+        document.getElementById('modeDance').addEventListener('click', () => setMode('dance'));
+
+        // Przyciski dance
+        document.getElementById('danceStartBtn').addEventListener('click', startDanceGame);
+        document.getElementById('danceResetBtn').addEventListener('click', resetDanceGame);
+
+        // ================================================================
+        //  11.  INICJALIZACJA
+        // ================================================================
+        // Ustawienie rozmiaru canvasu
+        function resizeCanvas() {
+            const rect = canvas.parentElement.getBoundingClientRect();
+            // rozmiar ustalany w drawDanceFrame
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Inicjalizacja modeli
+        initHands();
+        initPose();
+
+        // Domyślnie tryb hand
+        setMode('hand');
+
+        // Na wszelki wypadek, gdyby kamera nie wystartowała
+        setTimeout(() => {
+            if (!cameraInstance) startCamera();
+        }, 300);
+
+        // Uruchomienie odświeżania cache klikalnych co 2s
+        setInterval(updateClickablesCache, 2000);
+
+        console.log('🚀 Wirtualny Kursor Lab + Just Dance gotowy!');
+        console.log('📌 Tryb Ręka: steruj kursorem, gry gestowe');
+        console.log('💃 Tryb Taniec: naśladuj pozycje i zbieraj punkty!');
+    </script>
 </body>
 </html>
