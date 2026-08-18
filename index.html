@@ -285,7 +285,6 @@
     let startScrollY = 0;
 
     const SMOOTHING_FACTOR = 0.35; 
-    // Zmniejszono drastycznie czułość skrolowania z 2200 na 300 dla bardzo powolnego i precyzyjnego przewijania
     const SCROLL_SENSITIVITY = 300; 
 
     // Cache elementów klikalnych do optymalizacji pętli
@@ -318,12 +317,12 @@
       b.style.left = Math.random() * (bubbleArea.clientWidth - 50) + 'px';
       b.style.top = Math.random() * (bubbleArea.clientHeight - 50) + 'px';
       
-      b.addEventListener('click', () => {
+      b.onclick = () => {
         bubbleScore++;
         document.getElementById('bubble-score').innerText = bubbleScore;
         spawnBubble();
         updateClickablesCache();
-      });
+      };
 
       bubbleArea.appendChild(b);
       updateClickablesCache();
@@ -348,7 +347,7 @@
       clearInterval(moleInterval);
       clearTimeout(moleTimer);
 
-      moleInterval = setInterval(showRandomMole, 900);
+      moleInterval = setInterval(showRandomMole, 1800);
       moleTimer = setTimeout(() => {
         clearInterval(moleInterval);
         clearHoles();
@@ -360,6 +359,7 @@
       document.querySelectorAll('.mole-hole').forEach(h => {
         h.innerHTML = '';
         h.classList.remove('clickable');
+        h.onclick = null;
       });
       updateClickablesCache();
     }
@@ -371,16 +371,15 @@
       randomHole.innerHTML = '🐹';
       randomHole.classList.add('clickable');
       
-      const onMoleClick = () => {
+      randomHole.onclick = () => {
         moleScore++;
         document.getElementById('mole-score').innerText = moleScore;
         randomHole.innerHTML = '💥';
         randomHole.classList.remove('clickable');
-        randomHole.removeEventListener('click', onMoleClick);
+        randomHole.onclick = null;
         updateClickablesCache();
       };
 
-      randomHole.addEventListener('click', onMoleClick, { once: true });
       updateClickablesCache();
     }
 
@@ -531,16 +530,16 @@
 
     updateClickablesCache();
 
-    // --- 8. INICJALIZACJA LEKKIEGO MODELU MEDIAPIPE ---
+    // --- 8. INICJALIZACJA MODELU MEDIAPIPE ---
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
 
     hands.setOptions({
       maxNumHands: 1,           
-      modelComplexity: 0,      
-      minDetectionConfidence: 0.5,
-      minTrackingConfidence: 0.5
+      modelComplexity: 1,       
+      minDetectionConfidence: 0.7, 
+      minTrackingConfidence: 0.7
     });
 
     hands.onResults(onResults);
@@ -549,8 +548,8 @@
       onFrame: async () => {
         await hands.send({image: videoElement});
       },
-      width: 480,
-      height: 360
+      width: 640,
+      height: 480
     });
 
     camera.start();
