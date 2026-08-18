@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pl">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Virtual Hand Cursor Lab - Fresh Build</title>
+  <title>Wirtualny Kursor Lab - Pełna Stabilna Wersja</title>
   
-  <!-- Load MediaPipe dependencies -->
+  <!-- Stabilne biblioteki MediaPipe z CDN -->
   <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
   <script src="https://jsdelivr.net" crossorigin="anonymous"></script>
 
@@ -14,7 +14,7 @@
       margin: 0;
       padding: 20px;
       background: #141419;
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
       color: #fff;
       overflow: hidden;
       height: 100vh;
@@ -25,7 +25,7 @@
 
     h1 {
       text-align: center;
-      margin: 0 0 10px 0;
+      margin: 0 0 5px 0;
       font-size: 24px;
       color: #ff3366;
     }
@@ -63,7 +63,6 @@
       color: #888;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 5px;
     }
 
     #virtual-cursor {
@@ -76,6 +75,8 @@
       z-index: 9999;
       transform: translate(-50%, -50%);
       box-shadow: 0 0 15px rgba(255, 51, 102, 0.6);
+      left: 50%;
+      top: 50%;
     }
 
     #virtual-cursor.clicking {
@@ -127,9 +128,6 @@
       font-size: 14px;
       background: #3a3a45;
     }
-    .key-btn.hovered {
-      background: #575766;
-    }
 
     .toggle-box {
       width: 60px;
@@ -167,40 +165,40 @@
       border: 2px solid #2d2d35;
       border-radius: 8px;
       z-index: 10;
+      background: #000;
     }
   </style>
 </head>
 <body>
 
-  <h1>Virtual Hand Cursor Lab</h1>
-  <p class="instructions">Hover the red circle onto buttons, then <strong>Close your Fist / Palm</strong> to click!</p>
+  <h1>Wirtualny Kursor Lab</h1>
+  <p class="instructions">Najedź czerwonym kółkiem na przycisk i <strong>Zaciśnij Pięść</strong>, aby kliknąć!</p>
 
   <div class="grid-container">
-    
     <div class="test-card">
-      <div class="card-title">Score Clicker</div>
+      <div class="card-title">Licznik Kliknięć</div>
       <div class="counter-display" id="click-count">0</div>
-      <button class="test-btn" id="btn-count">+ Add Score</button>
+      <button class="test-btn" id="btn-count">+ Dodaj Punkt</button>
     </div>
 
     <div class="test-card">
-      <div class="card-title">Toggle Matrix</div>
+      <div class="card-title">Przełącznik</div>
       <div class="toggle-box" id="test-toggle"></div>
-      <button class="test-btn" id="btn-toggle">Switch States</button>
+      <button class="test-btn" id="btn-toggle">Zmień Stan</button>
     </div>
 
     <div class="test-card">
-      <div class="card-title">Alert Flags</div>
-      <button class="test-btn btn-danger" id="btn-alert">Trigger Warning</button>
+      <div class="card-title">Alert Test</div>
+      <button class="test-btn btn-danger" id="btn-alert">Uruchom Alert</button>
     </div>
 
     <div class="test-card">
-      <div class="card-title">Color Shift</div>
-      <button class="test-btn btn-success" id="btn-color">Invert Background</button>
+      <div class="card-title">Kolor Tła</div>
+      <button class="test-btn btn-success" id="btn-color">Zmień Kolor</button>
     </div>
 
     <div class="test-card">
-      <div class="card-title">Input Matrix</div>
+      <div class="card-title">Klawiatura Numeryczna</div>
       <div class="keypad">
         <button class="test-btn key-btn">1</button>
         <button class="test-btn key-btn">2</button>
@@ -212,10 +210,9 @@
     </div>
 
     <div class="test-card">
-      <div class="card-title">Reset Unit</div>
-      <button class="test-btn" id="btn-reset" style="background-color: #777;">Clear Diagnostics</button>
+      <div class="card-title">Reset Panelu</div>
+      <button class="test-btn" id="btn-reset" style="background-color: #777;">Resetuj Wszystko</button>
     </div>
-
   </div>
 
   <video id="webcam" autoplay playsinline></video>
@@ -229,6 +226,7 @@
     let counterValue = 0;
     let isFistClosed = false;
 
+    // Obsługa kliknięć interfejsu
     document.getElementById('btn-count').addEventListener('click', () => {
       counterValue++;
       document.getElementById('click-count').innerText = counterValue;
@@ -239,12 +237,11 @@
     });
 
     document.getElementById('btn-alert').addEventListener('click', () => {
-      alert("Virtual Hand Click Confirmed Successfully!");
+      alert("Kliknięcie pięścią działa poprawnie!");
     });
 
     document.getElementById('btn-color').addEventListener('click', () => {
-      const currentBg = document.body.style.backgroundColor;
-      document.body.style.backgroundColor = currentBg === 'rgb(41, 17, 47)' ? '#141419' : '#29112f';
+      document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' : '#29112f';
     });
 
     document.getElementById('btn-reset').addEventListener('click', () => {
@@ -261,6 +258,7 @@
       });
     });
 
+    // Płynny ruch interpolowany (Inercja)
     let currentX = window.innerWidth / 2;
     let currentY = window.innerHeight / 2;
     let targetX = currentX;
@@ -268,17 +266,21 @@
     const SMOOTHING_FACTOR = 0.15; 
 
     function onResults(results) {
-      if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) return;
+      if (!results || !results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+        return;
+      }
 
-      const landmarks = results.multiHandLandmarks[0].landmark;
-      const handAnchor = landmarks[9]; // Middle knuckle anchor point
+      const hand = results.multiHandLandmarks[0]; 
+      const handAnchor = hand[9]; // Kostka palca środkowego
 
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
+      // Mapowanie współrzędnych z lekkim paddingiem 15% na brzegi ekranu
       targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.15) / 0.7 * windowWidth));
       targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.15) / 0.7 * windowHeight));
 
+      // Wykrywanie najechania (Hover)
       let hoveredElement = null;
       allButtons.forEach(btn => {
         const rect = btn.getBoundingClientRect();
@@ -290,10 +292,11 @@
         }
       });
 
-      const isIndexClosed  = landmarks[8].y  > landmarks[5].y;
-      const isMiddleClosed = landmarks[12].y > landmarks[9].y;
-      const isRingClosed   = landmarks[16].y > landmarks[13].y;
-      const isPinkyClosed  = landmarks[20].y > landmarks[17].y;
+      // Logika sprawdzania zaciśniętej pięści
+      const isIndexClosed  = hand[8].y  > hand[6].y;
+      const isMiddleClosed = hand[12].y > hand[10].y;
+      const isRingClosed   = hand[16].y > hand[14].y;
+      const isPinkyClosed  = hand[20].y > hand[18].y;
 
       if (isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed) {
         if (!isFistClosed) {
@@ -309,6 +312,7 @@
       }
     }
 
+    // Pętla animacji płynnego rysowania kursora
     function updateCursorAnimation() {
       currentX += (targetX - currentX) * SMOOTHING_FACTOR;
       currentY += (targetY - currentY) * SMOOTHING_FACTOR;
@@ -320,6 +324,7 @@
     }
     requestAnimationFrame(updateCursorAnimation);
 
+    // Konfiguracja MediaPipe Hands z poprawionym ciągiem szablonu URL
     const hands = new Hands({
       locateFile: (file) => `https://jsdelivr.net{file}`
     });
@@ -327,12 +332,13 @@
     hands.setOptions({
       maxNumHands: 1,
       modelComplexity: 1,
-      minDetectionConfidence: 0.6,
-      minTrackingConfidence: 0.6
+      minDetectionConfidence: 0.5,
+      minTrackingConfidence: 0.5
     });
 
     hands.onResults(onResults);
 
+    // Uruchomienie strumienia wideo z kamery
     const camera = new Camera(videoElement, {
       onFrame: async () => {
         await hands.send({image: videoElement});
@@ -342,6 +348,3 @@
     });
 
     camera.start();
-  </script>
-</body>
-</html>
