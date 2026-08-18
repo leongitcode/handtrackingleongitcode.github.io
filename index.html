@@ -3,31 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Wirtualny Kursor Lab - Multihand + Scrolling</title>
+  <title>Wirtualny Kursor Lab + 3 Minigry</title>
   
-  <!-- Biblioteki MediaPipe z pełnymi ścieżkami -->
+  <!-- Szybkie i stabilne biblioteki MediaPipe -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 
   <style>
     body {
       margin: 0;
-      padding: 20px 20px 100px 20px; /* Dodatkowy padding na dole */
+      padding: 20px 20px 100px 20px;
       background: #141419;
       font-family: 'Segoe UI', sans-serif;
       color: #fff;
       min-height: 100vh;
       overflow-x: hidden;
-      overflow-y: auto; /* Pozwala na przewijanie w pionie */
-      display: flex;
-      flex-direction: column;
+      overflow-y: auto;
       box-sizing: border-box;
     }
 
     h1 {
       text-align: center;
       margin: 0 0 5px 0;
-      font-size: 24px;
+      font-size: 26px;
       color: #ff3366;
     }
 
@@ -35,13 +33,54 @@
       text-align: center;
       margin: 0 0 20px 0;
       color: #aaa;
-      font-size: 15px;
+      font-size: 14px;
+    }
+
+    /* KURSOR */
+    #virtual-cursor {
+      position: fixed;
+      width: 22px;
+      height: 22px;
+      background-color: #ff3366;
+      border-radius: 50%;
+      pointer-events: none; 
+      z-index: 9999;
+      transform: translate(-50%, -50%);
+      left: 50%;
+      top: 50%;
+      display: none;
+      box-shadow: 0 0 15px rgba(255, 51, 102, 0.8);
+      transition: width 0.08s, height 0.08s, background-color 0.08s;
+    }
+
+    #virtual-cursor.clicking {
+      background-color: #00ff66 !important;
+      width: 14px;
+      height: 14px;
+      box-shadow: 0 0 20px rgba(0, 255, 102, 1) !important;
+    }
+
+    #virtual-cursor.dragging {
+      background-color: #b055ff !important;
+      box-shadow: 0 0 20px rgba(176, 85, 255, 1) !important;
+      width: 18px;
+      height: 18px;
+    }
+
+    /* SEKCJE I SEKTORY */
+    .section-title {
+      text-align: center;
+      font-size: 20px;
+      color: #3399ff;
+      margin: 30px 0 15px 0;
+      border-bottom: 2px solid #2d2d35;
+      padding-bottom: 8px;
     }
 
     .grid-container {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 20px;
+      gap: 15px;
       max-width: 1000px;
       width: 100%;
       margin: 0 auto;
@@ -51,102 +90,116 @@
       background: #1e1e24;
       border: 2px solid #2d2d35;
       border-radius: 12px;
-      padding: 20px;
+      padding: 15px;
       display: flex;
       flex-direction: column;
       justify-content: center;
       align-items: center;
-      gap: 12px;
-      min-height: 150px;
+      gap: 10px;
+      min-height: 140px;
     }
 
     .card-title {
-      font-size: 14px;
+      font-size: 13px;
       color: #888;
       text-transform: uppercase;
       letter-spacing: 1px;
-      text-align: center;
     }
 
-    /* KURSORY - Ustawione na 'fixed', aby podążały za ekranem podczas scrollowania */
-    .cursor {
-      position: fixed; 
-      width: 24px;
-      height: 24px;
-      border-radius: 50%;
-      pointer-events: none; 
-      z-index: 9999;
-      transform: translate(-50%, -50%);
-      left: 50%;
-      top: 50%;
-      display: none;
-      transition: width 0.1s, height 0.1s, background-color 0.1s;
+    /* PRZYCISKI ORAZ INTERAKCJE */
+    .clickable {
+      cursor: pointer;
+      user-select: none;
+      transition: transform 0.1s, background-color 0.2s;
     }
 
-    #virtual-cursor-1 {
-      background-color: #ff3366;
-      box-shadow: 0 0 15px rgba(255, 51, 102, 0.6);
-    }
-
-    #virtual-cursor-2 {
-      background-color: #00d2ff;
-      box-shadow: 0 0 15px rgba(0, 210, 255, 0.6);
-    }
-
-    /* Stan zaciśniętej pięści */
-    .cursor.clicking {
-      background-color: #00ff66 !important;
-      width: 16px;
-      height: 16px;
-      box-shadow: 0 0 20px rgba(0, 255, 102, 0.9) !important;
-    }
-
-    /* Stan przesuwania tła (scroll) */
-    .cursor.dragging {
-      background-color: #b055ff !important;
-      box-shadow: 0 0 20px rgba(176, 85, 255, 0.9) !important;
-      width: 20px;
-      height: 20px;
+    .clickable.hovered {
+      transform: scale(1.05) !important;
+      filter: brightness(1.2);
     }
 
     .test-btn {
-      padding: 14px 24px;
-      font-size: 16px;
+      padding: 12px 20px;
+      font-size: 15px;
       font-weight: bold;
       color: white;
       background-color: #3399ff;
       border: none;
       border-radius: 8px;
-      cursor: pointer;
       width: 100%;
       box-sizing: border-box;
-      transition: background-color 0.2s, transform 0.1s;
-    }
-
-    .test-btn.hovered {
-      background-color: #0077e6;
-      transform: scale(1.03);
     }
 
     .btn-danger { background-color: #ff3333; }
-    .btn-danger.hovered { background-color: #cc0000; }
-
     .btn-success { background-color: #00cc66; }
-    .btn-success.hovered { background-color: #00994d; }
 
-    .counter-display {
-      font-size: 36px;
-      font-weight: bold;
-      color: #00ff66;
+    /* GRE 1: BUBBLE POP */
+    #bubble-area {
+      width: 100%;
+      height: 220px;
+      background: #121216;
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      border: 1px dashed #444;
+    }
+    .bubble {
+      position: absolute;
+      width: 45px;
+      height: 45px;
+      background: radial-gradient(circle at 30% 30%, #ff6699, #ff0055);
+      border-radius: 50%;
+      box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
     }
 
-    /* KAMERA - Ustawiona na 'fixed', aby zostawała w rogu podczas scrollowania */
+    /* GRE 2: WHACK-A-MOLE */
+    .mole-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 260px;
+    }
+    .mole-hole {
+      height: 65px;
+      background: #2a2a35;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 30px;
+    }
+
+    /* GRE 3: MEMORY MATCH */
+    .memory-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+    }
+    .memory-card {
+      height: 70px;
+      background: #3399ff;
+      border-radius: 8px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 28px;
+      color: transparent;
+    }
+    .memory-card.flipped {
+      background: #2a2a35;
+      color: #fff;
+    }
+
+    /* KAMERA */
     #webcam {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      width: 160px;
-      height: 120px;
+      bottom: 15px;
+      right: 15px;
+      width: 140px;
+      height: 105px;
       transform: scaleX(-1);
       border: 2px solid #2d2d35;
       border-radius: 8px;
@@ -157,242 +210,347 @@
 </head>
 <body>
 
-  <h1>Wirtualny Kursor Lab (Scroll)</h1>
+  <h1>Wirtualny Kursor Lab</h1>
   <p class="instructions">
-    Najedź kursorem na przycisk i <strong>zaciśnij pięść</strong>, aby kliknąć!<br>
-    Aby przeskrolować stronę: <strong>zaciśnij pięść w pustym miejscu i pociągnij dłoń w dół lub górę.</strong>
+    Najedź kursorem na element i <strong>zaciśnij pięść</strong>, aby kliknąć.<br>
+    Zaciśnij pięść na wolnym tle i pociągnij góra/dół, aby <strong>powoli przewijać stronę</strong>.
   </p>
 
-  <div class="grid-container" id="main-grid">
+  <!-- SEKCJA 1: MINIGRY -->
+  <div class="section-title">🎮 MINIGRY GESTOWE</div>
+  
+  <div class="grid-container">
+    <!-- GRA 1 -->
     <div class="test-card">
-      <div class="card-title">Licznik Kliknięć</div>
-      <div class="counter-display" id="click-count">0</div>
-      <button class="test-btn" id="btn-count">+ Dodaj Punkt</button>
+      <div class="card-title">1. Balonowy Łowca</div>
+      <div>Wynik: <strong id="bubble-score" style="color:#00ff66">0</strong></div>
+      <div id="bubble-area"></div>
+      <button class="test-btn clickable" id="btn-start-bubble">Start (30s)</button>
+    </div>
+
+    <!-- GRA 2 -->
+    <div class="test-card">
+      <div class="card-title">2. Whack-A-Mole</div>
+      <div>Punkty: <strong id="mole-score" style="color:#00ff66">0</strong></div>
+      <div class="mole-grid" id="mole-grid"></div>
+      <button class="test-btn clickable" id="btn-start-mole">Start (30s)</button>
+    </div>
+
+    <!-- GRA 3 -->
+    <div class="test-card">
+      <div class="card-title">3. Pamięć (Memory)</div>
+      <div>Ruchy: <strong id="memory-moves" style="color:#3399ff">0</strong></div>
+      <div class="memory-grid" id="memory-grid"></div>
+      <button class="test-btn clickable" id="btn-reset-memory">Resetuj Karty</button>
+    </div>
+  </div>
+
+  <!-- SEKCJA 2: NADAJNIKI I TESTY -->
+  <div class="section-title">🛠️ TESTY PRZYCISKÓW</div>
+
+  <div class="grid-container">
+    <div class="test-card">
+      <div class="card-title">Licznik</div>
+      <div style="font-size: 28px; font-weight: bold; color: #00ff66" id="click-count">0</div>
+      <button class="test-btn clickable" id="btn-count">+1 Punkt</button>
     </div>
 
     <div class="test-card">
-      <div class="card-title">Alert Test</div>
-      <button class="test-btn btn-danger" id="btn-alert">Uruchom Alert</button>
+      <div class="card-title">Test Alertu</div>
+      <button class="test-btn btn-danger clickable" id="btn-alert">Uruchom Alert</button>
     </div>
 
     <div class="test-card">
       <div class="card-title">Kolor Tła</div>
-      <button class="test-btn btn-success" id="btn-color">Zmień Kolor</button>
-    </div>
-    
-    <!-- Dodatkowe kafelki by strona była wystarczająco długa do scrollowania -->
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 1</div><button class="test-btn test-dummy">Kliknij mnie 1</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 2</div><button class="test-btn test-dummy">Kliknij mnie 2</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 3</div><button class="test-btn test-dummy">Kliknij mnie 3</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 4</div><button class="test-btn test-dummy">Kliknij mnie 4</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 5</div><button class="test-btn test-dummy">Kliknij mnie 5</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 6</div><button class="test-btn test-dummy">Kliknij mnie 6</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 7</div><button class="test-btn test-dummy">Kliknij mnie 7</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 8</div><button class="test-btn test-dummy">Kliknij mnie 8</button></div>
-    <div class="test-card"><div class="card-title">Dodatkowy Pasek 9</div><button class="test-btn test-dummy">Kliknij mnie 9</button></div>
-
-    <div class="test-card" style="grid-column: span 3;">
-      <div class="card-title">Reset Panelu</div>
-      <button class="test-btn" id="btn-reset" style="background-color: #777;">Resetuj Wszystko</button>
+      <button class="test-btn btn-success clickable" id="btn-color">Zmień Kolor</button>
     </div>
   </div>
 
   <video id="webcam" autoplay playsinline></video>
-  
-  <!-- Dwa kursory -->
-  <div id="virtual-cursor-1" class="cursor"></div>
-  <div id="virtual-cursor-2" class="cursor"></div>
+  <div id="virtual-cursor"></div>
 
   <script>
+    // --- 1. ZMIENNE KURSORA I WYDAJNOŚCI ---
+    const cursorElement = document.getElementById('virtual-cursor');
     const videoElement = document.getElementById('webcam');
-    
-    let counterValue = 0;
 
-    // Funkcje dla przycisków
+    let currentX = window.innerWidth / 2;
+    let currentY = window.innerHeight / 2;
+    let targetX = currentX;
+    let targetY = currentY;
+
+    let isFistClosed = false;
+    let isDragging = false;
+    let dragStartY = 0;
+    let startScrollY = 0;
+
+    const SMOOTHING_FACTOR = 0.35; 
+    // Zmniejszono drastycznie czułość skrolowania z 2200 na 300 dla bardzo powolnego i precyzyjnego przewijania
+    const SCROLL_SENSITIVITY = 300; 
+
+    // Cache elementów klikalnych do optymalizacji pętli
+    let cachedClickables = [];
+    function updateClickablesCache() {
+      cachedClickables = Array.from(document.querySelectorAll('.clickable'));
+    }
+
+    // --- 2. LOGIKA GRA 1: BUBBLE POP ---
+    let bubbleScore = 0;
+    let bubbleTimer = null;
+    const bubbleArea = document.getElementById('bubble-area');
+
+    document.getElementById('btn-start-bubble').addEventListener('click', () => {
+      bubbleScore = 0;
+      document.getElementById('bubble-score').innerText = bubbleScore;
+      spawnBubble();
+      clearTimeout(bubbleTimer);
+      bubbleTimer = setTimeout(() => {
+        bubbleArea.innerHTML = '';
+        alert("Koniec czasu! Twój wynik: " + bubbleScore);
+        updateClickablesCache();
+      }, 30000);
+    });
+
+    function spawnBubble() {
+      bubbleArea.innerHTML = '';
+      const b = document.createElement('div');
+      b.className = 'bubble clickable';
+      b.style.left = Math.random() * (bubbleArea.clientWidth - 50) + 'px';
+      b.style.top = Math.random() * (bubbleArea.clientHeight - 50) + 'px';
+      
+      b.addEventListener('click', () => {
+        bubbleScore++;
+        document.getElementById('bubble-score').innerText = bubbleScore;
+        spawnBubble();
+        updateClickablesCache();
+      });
+
+      bubbleArea.appendChild(b);
+      updateClickablesCache();
+    }
+
+    // --- 3. LOGIKA GRA 2: WHACK-A-MOLE ---
+    let moleScore = 0;
+    let moleTimer = null;
+    let moleInterval = null;
+    const moleGrid = document.getElementById('mole-grid');
+
+    for (let i = 0; i < 9; i++) {
+      const hole = document.createElement('div');
+      hole.className = 'mole-hole';
+      hole.dataset.id = i;
+      moleGrid.appendChild(hole);
+    }
+
+    document.getElementById('btn-start-mole').addEventListener('click', () => {
+      moleScore = 0;
+      document.getElementById('mole-score').innerText = moleScore;
+      clearInterval(moleInterval);
+      clearTimeout(moleTimer);
+
+      moleInterval = setInterval(showRandomMole, 900);
+      moleTimer = setTimeout(() => {
+        clearInterval(moleInterval);
+        clearHoles();
+        alert("Koniec gry! Trafione krety: " + moleScore);
+      }, 30000);
+    });
+
+    function clearHoles() {
+      document.querySelectorAll('.mole-hole').forEach(h => {
+        h.innerHTML = '';
+        h.classList.remove('clickable');
+      });
+      updateClickablesCache();
+    }
+
+    function showRandomMole() {
+      clearHoles();
+      const holes = document.querySelectorAll('.mole-hole');
+      const randomHole = holes[Math.floor(Math.random() * holes.length)];
+      randomHole.innerHTML = '🐹';
+      randomHole.classList.add('clickable');
+      
+      const onMoleClick = () => {
+        moleScore++;
+        document.getElementById('mole-score').innerText = moleScore;
+        randomHole.innerHTML = '💥';
+        randomHole.classList.remove('clickable');
+        randomHole.removeEventListener('click', onMoleClick);
+        updateClickablesCache();
+      };
+
+      randomHole.addEventListener('click', onMoleClick, { once: true });
+      updateClickablesCache();
+    }
+
+    // --- 4. LOGIKA GRA 3: MEMORY MATCH ---
+    const memoryGrid = document.getElementById('memory-grid');
+    const icons = ['🍕', '🍕', '🚀', '🚀', '🐱', '🐱', '🎮', '🎮'];
+    let flippedCards = [];
+    let moves = 0;
+
+    function initMemoryGame() {
+      memoryGrid.innerHTML = '';
+      moves = 0;
+      document.getElementById('memory-moves').innerText = moves;
+      const shuffled = [...icons].sort(() => Math.random() - 0.5);
+
+      shuffled.forEach(icon => {
+        const card = document.createElement('div');
+        card.className = 'memory-card clickable';
+        card.dataset.icon = icon;
+        card.innerText = icon;
+
+        card.addEventListener('click', () => {
+          if (flippedCards.length < 2 && !card.classList.contains('flipped')) {
+            card.classList.add('flipped');
+            flippedCards.push(card);
+
+            if (flippedCards.length === 2) {
+              moves++;
+              document.getElementById('memory-moves').innerText = moves;
+              checkMemoryMatch();
+            }
+          }
+        });
+
+        memoryGrid.appendChild(card);
+      });
+      updateClickablesCache();
+    }
+
+    function checkMemoryMatch() {
+      const [c1, c2] = flippedCards;
+      if (c1.dataset.icon === c2.dataset.icon) {
+        c1.classList.remove('clickable');
+        c2.classList.remove('clickable');
+        flippedCards = [];
+        updateClickablesCache();
+      } else {
+        setTimeout(() => {
+          c1.classList.remove('flipped');
+          c2.classList.remove('flipped');
+          flippedCards = [];
+        }, 800);
+      }
+    }
+
+    document.getElementById('btn-reset-memory').addEventListener('click', initMemoryGame);
+    initMemoryGame();
+
+    // --- 5. POZOSTAŁE FUNKCJE TESTOWE ---
+    let counterValue = 0;
     document.getElementById('btn-count').addEventListener('click', () => {
       counterValue++;
       document.getElementById('click-count').innerText = counterValue;
     });
     document.getElementById('btn-alert').addEventListener('click', () => {
-      alert("Kliknięcie pięścią działa poprawnie!");
+      alert("Test alertu zakończony sukcesem!");
     });
     document.getElementById('btn-color').addEventListener('click', () => {
       document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' : '#29112f';
     });
-    document.getElementById('btn-reset').addEventListener('click', () => {
-      counterValue = 0;
-      document.getElementById('click-count').innerText = 0;
-      document.body.style.backgroundColor = '#141419';
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    });
-    document.querySelectorAll('.test-dummy').forEach(btn => {
-      btn.addEventListener('click', () => {
-        btn.style.backgroundColor = '#ffcc00';
-        btn.style.color = '#000';
-        setTimeout(() => { btn.style.backgroundColor = ''; btn.style.color = ''; }, 400);
-      });
-    });
 
-    // Struktura pamiętająca stan kursorów + zmienne do scrollowania
-    const cursors = [
-      {
-        element: document.getElementById('virtual-cursor-1'),
-        currentX: window.innerWidth / 2, currentY: window.innerHeight / 2,
-        targetX: window.innerWidth / 2, targetY: window.innerHeight / 2,
-        isFistClosed: false,
-        active: false,
-        isDragging: false,    // Czy obecnie trzyma i przewija tło
-        dragStartY: 0,        // Y dłoni w momencie zaciśnięcia
-        startScrollY: 0       // Przesunięcie strony w momencie zaciśnięcia
-      },
-      {
-        element: document.getElementById('virtual-cursor-2'),
-        currentX: window.innerWidth / 2, currentY: window.innerHeight / 2,
-        targetX: window.innerWidth / 2, targetY: window.innerHeight / 2,
-        isFistClosed: false,
-        active: false,
-        isDragging: false,
-        dragStartY: 0,
-        startScrollY: 0
-      }
-    ];
-
-    const SMOOTHING_FACTOR = 0.15;
-    const SCROLL_SENSITIVITY = 2500; // Jak szybko strona ma przewijać się przy ruchu dłoni
-
+    // --- 6. SILNIK PRZETWARZANIA GESTÓW (MEDIAPIPE) ---
     function onResults(results) {
       const detectedHands = results.multiHandLandmarks || [];
       const windowWidth = window.innerWidth;
       const windowHeight = window.innerHeight;
 
-      // Zawsze pobieramy aktualną listę przycisków
-      const allButtons = document.querySelectorAll('.test-btn');
-      const hoveredElements = new Set();
+      if (detectedHands.length > 0) {
+        const hand = detectedHands[0];
+        const handAnchor = hand[9]; 
 
-      for (let i = 0; i < 2; i++) {
-        const cursor = cursors[i];
-        
-        if (i < detectedHands.length) {
-          const hand = detectedHands[i];
-          const handAnchor = hand[9]; // Kostka palca środkowego do śledzenia pozycji
+        cursorElement.style.display = 'block';
 
-          cursor.active = true;
-          cursor.element.style.display = 'block';
+        targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.1) / 0.8 * windowWidth));
+        targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.1) / 0.8 * windowHeight));
 
-          // Ponieważ używamy position: fixed, mapujemy względem samego okna (viewport)
-          cursor.targetX = Math.max(0, Math.min(windowWidth, ((1 - handAnchor.x) - 0.15) / 0.7 * windowWidth));
-          cursor.targetY = Math.max(0, Math.min(windowHeight, (handAnchor.y - 0.15) / 0.7 * windowHeight));
+        const isIndexClosed  = hand[8].y  > hand[6].y;
+        const isMiddleClosed = hand[12].y > hand[10].y;
+        const isRingClosed   = hand[16].y > hand[14].y;
+        const isPinkyClosed  = hand[20].y > hand[18].y;
+        const currentFistState = isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed;
 
-          // Logika wykrywania zaciskania pięści
-          const isIndexClosed  = hand[8].y  > hand[6].y;
-          const isMiddleClosed = hand[12].y > hand[10].y;
-          const isRingClosed   = hand[16].y > hand[14].y;
-          const isPinkyClosed  = hand[20].y > hand[18].y;
-          const currentFistState = isIndexClosed && isMiddleClosed && isRingClosed && isPinkyClosed;
-
-          // Wykrywanie najechania na guziki
-          let hoveredElement = null;
-          allButtons.forEach(btn => {
-            const rect = btn.getBoundingClientRect(); // rect podaje koordynaty względem viewportu (idealnie pasuje do fixed!)
-            if (cursor.currentX >= rect.left && cursor.currentX <= rect.right && 
-                cursor.currentY >= rect.top && cursor.currentY <= rect.bottom) {
-              hoveredElements.add(btn);
-              hoveredElement = btn;
-            }
-          });
-
-          // Akcje w momencie zaciśnięcia pięści lub poruszania nią
-          if (currentFistState) {
-            if (!cursor.isFistClosed) {
-              // MOMENT ZACIŚNIĘCIA PIĘŚCI (Event "Mousedown")
-              cursor.isFistClosed = true;
-              
-              if (hoveredElement) {
-                // Kliknij przycisk
-                cursor.element.classList.add('clicking');
-                hoveredElement.click();
-              } else {
-                // Nie było przycisku - rozpocznij Scrollowanie (Grabbing)
-                cursor.isDragging = true;
-                cursor.dragStartY = handAnchor.y;
-                cursor.startScrollY = window.scrollY;
-                cursor.element.classList.add('dragging'); // Zmienia kolor na fioletowy, żeby pokazać drag
-              }
-            } else if (cursor.isDragging) {
-              // PIĘŚĆ JEST NADAL ZACIŚNIĘTA I SCROLLUJE (Event "Mousemove" drag)
-              // Obliczamy o ile przesunęła się dłoń w pionie
-              const deltaY = (handAnchor.y - cursor.dragStartY) * SCROLL_SENSITIVITY;
-              // Przewijamy stronę - ruch dłoni w dół przewija do góry (jak na smartfonie)
-              window.scrollTo({
-                top: cursor.startScrollY - deltaY,
-                left: 0,
-                behavior: 'instant' 
-              });
-            }
+        let hoveredElement = null;
+        cachedClickables.forEach(btn => {
+          const rect = btn.getBoundingClientRect();
+          if (currentX >= rect.left && currentX <= rect.right && 
+              currentY >= rect.top && currentY <= rect.bottom) {
+            btn.classList.add('hovered');
+            hoveredElement = btn;
           } else {
-            // PIĘŚĆ OTWARTA (Event "Mouseup")
-            cursor.isFistClosed = false;
-            cursor.isDragging = false;
-            cursor.element.classList.remove('clicking');
-            cursor.element.classList.remove('dragging');
+            btn.classList.remove('hovered');
+          }
+        });
+
+        if (currentFistState) {
+          if (!isFistClosed) {
+            isFistClosed = true;
+            if (hoveredElement) {
+              cursorElement.classList.add('clicking');
+              hoveredElement.click();
+            } else {
+              isDragging = true;
+              dragStartY = handAnchor.y;
+              startScrollY = window.scrollY;
+              cursorElement.classList.add('dragging');
+            }
+          } else if (isDragging) {
+            const deltaY = (handAnchor.y - dragStartY) * SCROLL_SENSITIVITY;
+            window.scrollTo({
+              top: startScrollY - deltaY,
+              left: 0,
+              behavior: 'instant'
+            });
           }
         } else {
-          // Ukryj kursor, jeśli dłoń zniknęła
-          cursor.active = false;
-          cursor.element.style.display = 'none';
-          cursor.isFistClosed = false;
-          cursor.isDragging = false;
-          cursor.element.classList.remove('clicking', 'dragging');
+          isFistClosed = false;
+          isDragging = false;
+          cursorElement.classList.remove('clicking', 'dragging');
         }
+      } else {
+        cursorElement.style.display = 'none';
+        isFistClosed = false;
+        isDragging = false;
       }
-
-      // Aktualizacja efektu Hover na przyciskach
-      allButtons.forEach(btn => {
-        if (hoveredElements.has(btn)) {
-          btn.classList.add('hovered');
-        } else {
-          btn.classList.remove('hovered');
-        }
-      });
     }
 
-    // Pętla renderująca kursory (60FPS)
+    // --- 7. PĘTLA ANIMACJI KURSORA ---
     function updateCursorAnimation() {
-      cursors.forEach(cursor => {
-        if (cursor.active) {
-          cursor.currentX += (cursor.targetX - cursor.currentX) * SMOOTHING_FACTOR;
-          cursor.currentY += (cursor.targetY - cursor.currentY) * SMOOTHING_FACTOR;
+      currentX += (targetX - currentX) * SMOOTHING_FACTOR;
+      currentY += (targetY - currentY) * SMOOTHING_FACTOR;
 
-          cursor.element.style.left = `${cursor.currentX}px`;
-          cursor.element.style.top = `${cursor.currentY}px`;
-        }
-      });
+      cursorElement.style.left = `${currentX}px`;
+      cursorElement.style.top = `${currentY}px`;
 
       requestAnimationFrame(updateCursorAnimation);
     }
     requestAnimationFrame(updateCursorAnimation);
 
-    // Inicjalizacja MediaPipe Hands
+    updateClickablesCache();
+
+    // --- 8. INICJALIZACJA LEKKIEGO MODELU MEDIAPIPE ---
     const hands = new Hands({
       locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
     });
 
     hands.setOptions({
-      maxNumHands: 2,
-      modelComplexity: 1,
+      maxNumHands: 1,           
+      modelComplexity: 0,      
       minDetectionConfidence: 0.5,
       minTrackingConfidence: 0.5
     });
 
     hands.onResults(onResults);
 
-    // Kamera
     const camera = new Camera(videoElement, {
       onFrame: async () => {
         await hands.send({image: videoElement});
       },
-      width: 640,
-      height: 480
+      width: 480,
+      height: 360
     });
 
     camera.start();
