@@ -1,1398 +1,1019 @@
 <!DOCTYPE html>
-<html lang="pl">
+<html lang="en">
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wirtualny Kursor Lab + Just Dance</title>
-
-    <!-- MediaPipe: Hands + Pose -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous">
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous">
-    </script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous">
-    </script>
-
+    <title>Beat Saber – Hand Tracking</title>
     <style>
-        /* ----- GLOBAL ----- */
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
         body {
-            margin: 0;
-            padding: 20px 20px 120px 20px;
-            background: #141419;
-            font-family: 'Segoe UI', sans-serif;
-            color: #fff;
-            min-height: 100vh;
-            overflow-x: hidden;
-            overflow-y: auto;
-            transition: background 0.3s;
-        }
-        h1 {
-            text-align: center;
-            margin: 0 0 5px 0;
-            font-size: 26px;
-            color: #ff3366;
-        }
-        .sub {
-            text-align: center;
-            color: #aaa;
-            font-size: 14px;
-            margin: 0 0 15px 0;
-        }
-
-        /* ----- MODE TOGGLE ----- */
-        .mode-bar {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 20px;
-            background: #1e1e24;
-            padding: 10px 20px;
-            border-radius: 40px;
-            max-width: 400px;
-            margin: 0 auto 25px auto;
-            border: 1px solid #2d2d35;
-        }
-        .mode-btn {
-            background: transparent;
-            border: none;
-            color: #888;
-            font-size: 15px;
-            font-weight: 600;
-            padding: 8px 24px;
-            border-radius: 30px;
-            cursor: pointer;
-            transition: 0.25s;
-            letter-spacing: 0.5px;
-        }
-        .mode-btn.active {
-            background: #ff3366;
-            color: #fff;
-            box-shadow: 0 0 18px rgba(255, 51, 102, 0.4);
-        }
-        .mode-btn:hover:not(.active) {
-            color: #fff;
-        }
-        .mode-indicator {
-            font-size: 13px;
-            color: #666;
-            padding: 0 6px;
-        }
-
-        /* ----- KURSOR (hand mode) ----- */
-        #virtual-cursor {
-            position: fixed;
-            width: 22px;
-            height: 22px;
-            background-color: #ff3366;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 9999;
-            transform: translate(-50%, -50%);
-            left: 50%;
-            top: 50%;
-            display: none;
-            box-shadow: 0 0 15px rgba(255, 51, 102, 0.8);
-            transition: width 0.08s, height 0.08s, background-color 0.08s;
-        }
-        #virtual-cursor.clicking {
-            background-color: #00ff66 !important;
-            width: 14px;
-            height: 14px;
-            box-shadow: 0 0 20px rgba(0, 255, 102, 1) !important;
-        }
-        #virtual-cursor.dragging {
-            background-color: #b055ff !important;
-            box-shadow: 0 0 20px rgba(176, 85, 255, 1) !important;
-            width: 18px;
-            height: 18px;
-        }
-
-        /* ----- SEKCJE ----- */
-        .section-title {
-            text-align: center;
-            font-size: 20px;
-            color: #3399ff;
-            margin: 30px 0 15px 0;
-            border-bottom: 2px solid #2d2d35;
-            padding-bottom: 8px;
-        }
-        .grid-container {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 15px;
-            max-width: 1000px;
-            width: 100%;
-            margin: 0 auto;
-        }
-        .test-card {
-            background: #1e1e24;
-            border: 2px solid #2d2d35;
-            border-radius: 12px;
-            padding: 15px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            gap: 10px;
-            min-height: 140px;
-        }
-        .card-title {
-            font-size: 13px;
-            color: #888;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .clickable {
-            cursor: pointer;
+            overflow: hidden;
+            background: #0a0a0a;
+            font-family: 'Segoe UI', Arial, sans-serif;
             user-select: none;
-            transition: transform 0.1s, background-color 0.2s;
         }
-        .clickable.hovered {
-            transform: scale(1.05) !important;
-            filter: brightness(1.2);
-        }
-        .test-btn {
-            padding: 12px 20px;
-            font-size: 15px;
-            font-weight: bold;
-            color: white;
-            background-color: #3399ff;
-            border: none;
-            border-radius: 8px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-        .btn-danger {
-            background-color: #ff3333;
-        }
-        .btn-success {
-            background-color: #00cc66;
-        }
-
-        /* ----- GRY (hand mode) ----- */
-        #bubble-area {
-            width: 100%;
-            height: 160px;
-            background: #121216;
-            border-radius: 8px;
-            position: relative;
+        #video-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
             overflow: hidden;
-            border: 1px dashed #444;
+            background: #0a0a0a;
         }
-        .bubble {
-            position: absolute;
-            width: 42px;
-            height: 42px;
-            background: radial-gradient(circle at 30% 30%, #ff6699, #ff0055);
-            border-radius: 50%;
-            box-shadow: 0 0 10px rgba(255, 0, 85, 0.5);
-        }
-        .mole-grid {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            width: 100%;
-            max-width: 220px;
-        }
-        .mole-hole {
-            height: 55px;
-            background: #2a2a35;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 28px;
-        }
-        .memory-grid {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            width: 100%;
-            max-width: 280px;
-        }
-        .memory-card {
-            height: 60px;
-            background: #3399ff;
-            border-radius: 8px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 24px;
-            color: transparent;
-        }
-        .memory-card.flipped {
-            background: #2a2a35;
-            color: #fff;
-        }
-
-        /* ===== DANCE MODE ===== */
-        #dance-section {
-            display: none;
-            max-width: 1100px;
-            margin: 0 auto;
-            padding: 0 10px;
-        }
-        #dance-section.active {
-            display: block;
-        }
-
-        .dance-layout {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 20px;
-            justify-content: center;
-            align-items: flex-start;
-        }
-        .dance-canvas-wrap {
-            position: relative;
-            flex: 2;
-            min-width: 340px;
-            max-width: 780px;
-            border-radius: 16px;
-            overflow: hidden;
-            background: #0b0b0e;
-            border: 2px solid #2d2d35;
-            aspect-ratio: 16/11;
-        }
-        #danceCanvas {
+        #video-container video {
             width: 100%;
             height: 100%;
-            display: block;
-            background: #0b0b0e;
+            object-fit: cover;
+            transform: scaleX(-1);
+            opacity: 0.6;
         }
-
-        .dance-side {
-            flex: 1;
-            min-width: 220px;
-            max-width: 320px;
-            background: #1a1a20;
-            border-radius: 16px;
-            padding: 18px 16px 20px;
-            border: 2px solid #2d2d35;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 12px;
-        }
-        .dance-side .big-score {
-            font-size: 42px;
-            font-weight: 800;
-            color: #ffdd44;
-            text-shadow: 0 0 30px rgba(255, 221, 68, 0.3);
-            line-height: 1;
-        }
-        .dance-side .label {
-            color: #888;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-        .dance-side .move-name {
-            font-size: 22px;
-            font-weight: 700;
-            color: #66ddff;
-            min-height: 40px;
-            text-align: center;
-        }
-        .dance-side .progress-bar {
-            width: 100%;
-            height: 6px;
-            background: #2d2d35;
-            border-radius: 4px;
-            overflow: hidden;
-            margin: 4px 0;
-        }
-        .dance-side .progress-fill {
-            height: 100%;
-            width: 0%;
-            background: linear-gradient(90deg, #ff3366, #ffdd44);
-            border-radius: 4px;
-            transition: width 0.15s;
-        }
-        .dance-side .feedback {
-            font-size: 20px;
-            font-weight: 700;
-            min-height: 36px;
-            color: #aaa;
-            text-align: center;
-        }
-        .dance-side .ctrl-row {
-            display: flex;
-            gap: 12px;
-            flex-wrap: wrap;
-            justify-content: center;
-            width: 100%;
-        }
-        .dance-side .ctrl-row button {
-            padding: 10px 26px;
-            border: none;
-            border-radius: 30px;
-            font-weight: 700;
-            font-size: 15px;
-            cursor: pointer;
-            transition: 0.2s;
-            background: #3399ff;
-            color: #fff;
-            flex: 1;
-            min-width: 100px;
-        }
-        .dance-side .ctrl-row button:active {
-            transform: scale(0.95);
-        }
-        .dance-side .ctrl-row button.danger {
-            background: #ff3366;
-        }
-        .dance-side .ctrl-row button.green {
-            background: #00cc66;
-        }
-        .dance-side .ctrl-row button:disabled {
-            opacity: 0.4;
+        #three-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 1;
             pointer-events: none;
         }
-        .dance-stats {
-            display: flex;
-            gap: 16px;
-            font-size: 14px;
-            color: #aaa;
-            justify-content: center;
+        #three-container canvas {
+            display: block;
             width: 100%;
+            height: 100%;
         }
-        .dance-stats span {
-            background: #25252e;
+
+        #ui-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: none;
+        }
+
+        #score-display {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 48px;
+            font-weight: 800;
+            text-shadow: 0 0 20px rgba(0, 200, 255, 0.6), 0 0 60px rgba(0, 200, 255, 0.3);
+            letter-spacing: 2px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 8px 32px;
+            border-radius: 16px;
+            backdrop-filter: blur(6px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        #score-display span {
+            color: #ffcc00;
+        }
+
+        #combo-display {
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #fff;
+            font-size: 28px;
+            font-weight: 600;
+            text-shadow: 0 0 20px rgba(255, 100, 200, 0.5);
+            opacity: 0.8;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 24px;
+            border-radius: 40px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.15s;
+        }
+        #combo-display .combo-num {
+            color: #ff6bff;
+            font-weight: 800;
+        }
+
+        #status {
+            position: absolute;
+            bottom: 20px;
+            right: 24px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            letter-spacing: 0.5px;
+            background: rgba(0, 0, 0, 0.5);
             padding: 4px 14px;
             border-radius: 20px;
+            backdrop-filter: blur(4px);
+            font-weight: 300;
+        }
+        #status .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #44ff88;
+            margin-right: 8px;
+            animation: pulse-dot 1.2s ease-in-out infinite;
+        }
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.3;
+                transform: scale(0.7);
+            }
         }
 
-        /* ----- KAMERA (współdzielona) ----- */
-        #webcam {
-            position: fixed;
-            bottom: 15px;
-            right: 15px;
-            width: 140px;
-            height: 105px;
-            transform: scaleX(-1);
-            border: 2px solid #2d2d35;
-            border-radius: 8px;
-            z-index: 10;
-            background: #000;
+        #instructions {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.3);
+            font-size: 14px;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 6px 20px;
+            border-radius: 30px;
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            white-space: nowrap;
+            font-weight: 300;
         }
 
-        /* ----- RESPONSIVE ----- */
-        @media(max-width:740px) {
-            .grid-container {
-                grid-template-columns: 1fr 1fr;
-            }
-            .dance-layout {
-                flex-direction: column;
-                align-items: center;
-            }
-            .dance-canvas-wrap {
-                min-width: 0;
-                width: 100%;
-                max-width: 100%;
-            }
-            .dance-side {
-                max-width: 100%;
-                width: 100%;
-            }
-            #webcam {
-                width: 100px;
-                height: 75px;
-            }
+        #miss-overlay {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: rgba(255, 50, 50, 0.6);
+            font-size: 72px;
+            font-weight: 900;
+            opacity: 0;
+            transition: opacity 0.1s;
+            text-shadow: 0 0 60px rgba(255, 0, 0, 0.4);
+            pointer-events: none;
         }
-        @media(max-width:500px) {
-            .grid-container {
-                grid-template-columns: 1fr;
+        #miss-overlay.show {
+            opacity: 1;
+        }
+
+        #saber-labels {
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 30px;
+            pointer-events: none;
+            font-size: 12px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.2);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+        #saber-labels .left {
+            color: rgba(255, 80, 80, 0.4);
+        }
+        #saber-labels .right {
+            color: rgba(80, 180, 255, 0.4);
+        }
+
+        @media (max-width: 700px) {
+            #score-display {
+                font-size: 28px;
+                padding: 4px 16px;
+                top: 16px;
             }
-            .mode-bar {
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 10px 14px;
+            #combo-display {
+                font-size: 18px;
+                bottom: 40px;
+                padding: 4px 16px;
             }
-            .mode-btn {
-                padding: 6px 16px;
-                font-size: 13px;
+            #instructions {
+                font-size: 11px;
+                bottom: 80px;
+                padding: 4px 14px;
+            }
+            #status {
+                font-size: 10px;
+                bottom: 12px;
+                right: 12px;
+            }
+            #saber-labels {
+                display: none;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== TITLE + MODE TOGGLE ===== -->
-    <h1>🕹️ Wirtualny Kursor Lab</h1>
-    <p class="sub">Tryb <strong>Ręka</strong> → steruj kursorem i graj w minigry &nbsp;|&nbsp; Tryb <strong>Taniec</strong> → Just Dance z ciałem</p>
-
-    <div class="mode-bar">
-        <button class="mode-btn active" data-mode="hand" id="modeHand">✋ Ręka</button>
-        <span class="mode-indicator">│</span>
-        <button class="mode-btn" data-mode="dance" id="modeDance">💃 Taniec</button>
+    <div id="video-container">
+        <video id="webcam" playsinline></video>
     </div>
 
-    <!-- ===== HAND MODE CONTENT ===== -->
-    <div id="hand-section">
-        <div class="section-title">🎮 MINIGRY GESTOWE</div>
-        <div class="grid-container">
-            <!-- Gra 1 -->
-            <div class="test-card">
-                <div class="card-title">1. Balonowy Łowca</div>
-                <div>Wynik: <strong id="bubble-score" style="color:#00ff66">0</strong></div>
-                <div id="bubble-area"></div>
-                <button class="test-btn clickable" id="btn-start-bubble">Start (30s)</button>
-            </div>
-            <!-- Gra 2 -->
-            <div class="test-card">
-                <div class="card-title">2. Whack-A-Mole</div>
-                <div>Punkty: <strong id="mole-score" style="color:#00ff66">0</strong></div>
-                <div class="mole-grid" id="mole-grid"></div>
-                <button class="test-btn clickable" id="btn-start-mole">Start (30s)</button>
-            </div>
-            <!-- Gra 3 -->
-            <div class="test-card">
-                <div class="card-title">3. Pamięć (Memory)</div>
-                <div>Ruchy: <strong id="memory-moves" style="color:#3399ff">0</strong></div>
-                <div class="memory-grid" id="memory-grid"></div>
-                <button class="test-btn clickable" id="btn-reset-memory">Resetuj Karty</button>
-            </div>
-        </div>
+    <div id="three-container"></div>
 
-        <div class="section-title">🛠️ TESTY PRZYCISKÓW</div>
-        <div class="grid-container">
-            <div class="test-card">
-                <div class="card-title">Licznik</div>
-                <div style="font-size:28px;font-weight:bold;color:#00ff66" id="click-count">0</div>
-                <button class="test-btn clickable" id="btn-count">+1 Punkt</button>
-            </div>
-            <div class="test-card">
-                <div class="card-title">Test Alertu</div>
-                <button class="test-btn btn-danger clickable" id="btn-alert">Uruchom Alert</button>
-            </div>
-            <div class="test-card">
-                <div class="card-title">Kolor Tła</div>
-                <button class="test-btn btn-success clickable" id="btn-color">Zmień Kolor</button>
-            </div>
-        </div>
-        <p style="text-align:center;color:#555;font-size:13px;margin:20px 0 0 0;">
-            ✊ Zaciśnij pięść na elemencie → kliknij &nbsp;│&nbsp; na tle → przeciągnij góra/dół do scrollowania
-        </p>
-    </div>
-
-    <!-- ===== DANCE MODE CONTENT ===== -->
-    <div id="dance-section">
-        <div class="dance-layout">
-            <div class="dance-canvas-wrap">
-                <canvas id="danceCanvas"></canvas>
-            </div>
-            <div class="dance-side">
-                <div class="label">Twój wynik</div>
-                <div class="big-score" id="danceTotalScore">0</div>
-
-                <div class="label">Ruch</div>
-                <div class="move-name" id="danceMoveName">—</div>
-
-                <div class="progress-bar">
-                    <div class="progress-fill" id="danceProgress"></div>
-                </div>
-
-                <div class="feedback" id="danceFeedback">👋 Gotowy?</div>
-
-                <div class="dance-stats">
-                    <span>✅ <span id="danceHit">0</span></span>
-                    <span>⏱️ <span id="danceTimer">0</span>s</span>
-                    <span>🎯 <span id="danceAccuracy">0%</span></span>
-                </div>
-
-                <div class="ctrl-row">
-                    <button class="green" id="danceStartBtn">▶ Start</button>
-                    <button class="danger" id="danceResetBtn">⟳ Reset</button>
-                </div>
-                <p style="color:#666;font-size:12px;text-align:center;margin:0;">
-                    Naśladuj sylwetkę z lewej strony! Najlepsze dopasowanie = więcej punktów.
-                </p>
-            </div>
+    <div id="ui-overlay">
+        <div id="score-display">⚡ <span id="score-num">0</span></div>
+        <div id="combo-display">🔥 combo × <span class="combo-num" id="combo-num">0</span></div>
+        <div id="instructions">✋ move hands to slice · blocks fly toward you</div>
+        <div id="status"><span class="dot"></span> tracking</div>
+        <div id="miss-overlay">✕ MISS</div>
+        <div id="saber-labels">
+            <span class="left">◀ left saber</span>
+            <span class="right">right saber ▶</span>
         </div>
     </div>
 
-    <!-- ===== KAMERA + KURSOR ===== -->
-    <video id="webcam" autoplay playsinline></video>
-    <div id="virtual-cursor"></div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous">
+    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous">
+    </script>
 
     <script>
-        // ================================================================
-        //  1.  ZMIENNE WSPÓLNE
-        // ================================================================
-        const cursorElement = document.getElementById('virtual-cursor');
-        const videoElement = document.getElementById('webcam');
-        const canvas = document.getElementById('danceCanvas');
-        const ctx = canvas.getContext('2d');
-
-        let currentMode = 'hand'; // 'hand' | 'dance'
-        let handModelActive = true;
-        let poseModelActive = false;
-
-        // --- kursor ---
-        let currentX = window.innerWidth / 2;
-        let currentY = window.innerHeight / 2;
-        let targetX = currentX;
-        let targetY = currentY;
-        let isFistClosed = false;
-        let isDragging = false;
-        let dragStartY = 0;
-        let startScrollY = 0;
-        const SMOOTHING_FACTOR = 0.35;
-        const SCROLL_SENSITIVITY = 300;
-        let cachedClickables = [];
-
-        function updateClickablesCache() {
-            cachedClickables = Array.from(document.querySelectorAll('.clickable'));
-        }
-
-        // --- kamera ---
-        let cameraInstance = null;
-
-        // ================================================================
-        //  2.  HAND MODE – LOGIKA GIER (pozostawiamy bez zmian)
-        // ================================================================
-        // Bubble
-        let bubbleScore = 0,
-            bubbleTimer = null;
-        const bubbleArea = document.getElementById('bubble-area');
-
-        document.getElementById('btn-start-bubble').addEventListener('click', () => {
-            bubbleScore = 0;
-            document.getElementById('bubble-score').innerText = bubbleScore;
-            spawnBubble();
-            clearTimeout(bubbleTimer);
-            bubbleTimer = setTimeout(() => {
-                bubbleArea.innerHTML = '';
-                alert('Koniec czasu! Wynik: ' + bubbleScore);
-                updateClickablesCache();
-            }, 30000);
-        });
-
-        function spawnBubble() {
-            bubbleArea.innerHTML = '';
-            const b = document.createElement('div');
-            b.className = 'bubble clickable';
-            const w = bubbleArea.clientWidth || 200;
-            const h = bubbleArea.clientHeight || 150;
-            b.style.left = Math.random() * (w - 50) + 'px';
-            b.style.top = Math.random() * (h - 50) + 'px';
-            b.onclick = () => {
-                bubbleScore++;
-                document.getElementById('bubble-score').innerText = bubbleScore;
-                spawnBubble();
-                updateClickablesCache();
-            };
-            bubbleArea.appendChild(b);
-            updateClickablesCache();
-        }
-
-        // Mole
-        let moleScore = 0,
-            moleTimer = null,
-            moleInterval = null;
-        const moleGrid = document.getElementById('mole-grid');
-        for (let i = 0; i < 9; i++) {
-            const d = document.createElement('div');
-            d.className = 'mole-hole';
-            d.dataset.id = i;
-            moleGrid.appendChild(d);
-        }
-        document.getElementById('btn-start-mole').addEventListener('click', () => {
-            moleScore = 0;
-            document.getElementById('mole-score').innerText = moleScore;
-            clearInterval(moleInterval);
-            clearTimeout(moleTimer);
-            moleInterval = setInterval(showRandomMole, 1800);
-            moleTimer = setTimeout(() => {
-                clearInterval(moleInterval);
-                clearHoles();
-                alert('Koniec gry! Trafione: ' + moleScore);
-            }, 30000);
-        });
-
-        function clearHoles() {
-            document.querySelectorAll('.mole-hole').forEach(h => { h.innerHTML = '';
-                h.classList.remove('clickable');
-                h.onclick = null; });
-            updateClickablesCache();
-        }
-
-        function showRandomMole() {
-            clearHoles();
-            const holes = document.querySelectorAll('.mole-hole');
-            const rh = holes[Math.floor(Math.random() * holes.length)];
-            rh.innerHTML = '🐹';
-            rh.classList.add('clickable');
-            rh.onclick = () => {
-                moleScore++;
-                document.getElementById('mole-score').innerText = moleScore;
-                rh.innerHTML = '💥';
-                rh.classList.remove('clickable');
-                rh.onclick = null;
-                updateClickablesCache();
-            };
-            updateClickablesCache();
-        }
-
-        // Memory
-        const memoryGrid = document.getElementById('memory-grid');
-        const icons = ['🍕', '🍕', '🚀', '🚀', '🐱', '🐱', '🎮', '🎮'];
-        let flippedCards = [],
-            moves = 0;
-
-        function initMemoryGame() {
-            memoryGrid.innerHTML = '';
-            moves = 0;
-            document.getElementById('memory-moves').innerText = moves;
-            const shuffled = [...icons].sort(() => Math.random() - 0.5);
-            shuffled.forEach(icon => {
-                const card = document.createElement('div');
-                card.className = 'memory-card clickable';
-                card.dataset.icon = icon;
-                card.innerText = icon;
-                card.addEventListener('click', () => {
-                    if (flippedCards.length < 2 && !card.classList.contains('flipped')) {
-                        card.classList.add('flipped');
-                        flippedCards.push(card);
-                        if (flippedCards.length === 2) {
-                            moves++;
-                            document.getElementById('memory-moves').innerText = moves;
-                            checkMemoryMatch();
-                        }
-                    }
-                });
-                memoryGrid.appendChild(card);
-            });
-            updateClickablesCache();
-        }
-
-        function checkMemoryMatch() {
-            const [c1, c2] = flippedCards;
-            if (c1.dataset.icon === c2.dataset.icon) {
-                c1.classList.remove('clickable');
-                c2.classList.remove('clickable');
-                flippedCards = [];
-                updateClickablesCache();
-            } else {
-                setTimeout(() => {
-                    c1.classList.remove('flipped');
-                    c2.classList.remove('flipped');
-                    flippedCards = [];
-                }, 800);
-            }
-        }
-        document.getElementById('btn-reset-memory').addEventListener('click', initMemoryGame);
-        initMemoryGame();
-
-        // Test buttons
-        let counterValue = 0;
-        document.getElementById('btn-count').addEventListener('click', () => {
-            counterValue++;
-            document.getElementById('click-count').innerText = counterValue;
-        });
-        document.getElementById('btn-alert').addEventListener('click', () => { alert('Test alertu!'); });
-        document.getElementById('btn-color').addEventListener('click', () => {
-            document.body.style.backgroundColor = document.body.style.backgroundColor === 'rgb(41, 17, 47)' ? '#141419' :
-                '#29112f';
-        });
-
-        // ================================================================
-        //  3.  HAND TRACKING (MediaPipe Hands)
-        // ================================================================
-        let handsInstance = null;
-        let handResultsFn = null;
-
-        function initHands() {
-            if (handsInstance) {
-                handsInstance.close();
-                handsInstance = null;
-            }
-            handsInstance = new Hands({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-            });
-            handsInstance.setOptions({
-                maxNumHands: 1,
-                modelComplexity: 1,
-                minDetectionConfidence: 0.7,
-                minTrackingConfidence: 0.7
-            });
-
-            handResultsFn = (results) => {
-                if (currentMode !== 'hand') return;
-                const detected = results.multiHandLandmarks || [];
-                const ww = window.innerWidth,
-                    wh = window.innerHeight;
-                if (detected.length > 0) {
-                    const hand = detected[0];
-                    const anchor = hand[9];
-                    cursorElement.style.display = 'block';
-                    targetX = Math.max(0, Math.min(ww, ((1 - anchor.x) - 0.1) / 0.8 * ww));
-                    targetY = Math.max(0, Math.min(wh, (anchor.y - 0.1) / 0.8 * wh));
-
-                    const idx = hand[8].y > hand[6].y;
-                    const mid = hand[12].y > hand[10].y;
-                    const ring = hand[16].y > hand[14].y;
-                    const pink = hand[20].y > hand[18].y;
-                    const fist = idx && mid && ring && pink;
-
-                    let hovered = null;
-                    cachedClickables.forEach(btn => {
-                        const r = btn.getBoundingClientRect();
-                        if (currentX >= r.left && currentX <= r.right &&
-                            currentY >= r.top && currentY <= r.bottom) {
-                            btn.classList.add('hovered');
-                            hovered = btn;
-                        } else {
-                            btn.classList.remove('hovered');
-                        }
-                    });
-
-                    if (fist) {
-                        if (!isFistClosed) {
-                            isFistClosed = true;
-                            if (hovered) {
-                                cursorElement.classList.add('clicking');
-                                hovered.click();
-                            } else {
-                                isDragging = true;
-                                dragStartY = anchor.y;
-                                startScrollY = window.scrollY;
-                                cursorElement.classList.add('dragging');
-                            }
-                        } else if (isDragging) {
-                            const dy = (anchor.y - dragStartY) * SCROLL_SENSITIVITY;
-                            window.scrollTo({ top: startScrollY - dy, left: 0, behavior: 'instant' });
-                        }
-                    } else {
-                        isFistClosed = false;
-                        isDragging = false;
-                        cursorElement.classList.remove('clicking', 'dragging');
-                    }
-                } else {
-                    cursorElement.style.display = 'none';
-                    isFistClosed = false;
-                    isDragging = false;
-                }
-            };
-            handsInstance.onResults(handResultsFn);
-        }
-
-        // ================================================================
-        //  4.  DANCE MODE – MediaPipe Pose
-        // ================================================================
-        let poseInstance = null;
-        let poseResultsFn = null;
-        let latestPose = null; // przechowuje ostatnie landmarky
-
-        function initPose() {
-            if (poseInstance) {
-                poseInstance.close();
-                poseInstance = null;
-            }
-            poseInstance = new Pose({
-                locateFile: (file) => `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`
-            });
-            poseInstance.setOptions({
-                modelComplexity: 1,
-                smoothLandmarks: true,
-                minDetectionConfidence: 0.6,
-                minTrackingConfidence: 0.6
-            });
-            poseResultsFn = (results) => {
-                if (currentMode !== 'dance') return;
-                if (results.poseLandmarks) {
-                    latestPose = results.poseLandmarks;
-                } else {
-                    latestPose = null;
-                }
-                // rysowanie na canvasie odbywa się w pętli animacji
-            };
-            poseInstance.onResults(poseResultsFn);
-        }
-
-        // ================================================================
-        //  5.  DANCE GAME – logika
-        // ================================================================
-        const dance = {
-            moves: [],
-            currentIndex: 0,
-            score: 0,
-            totalScore: 0,
-            hits: 0,
-            totalAttempts: 0,
-            isRunning: false,
-            isCountingDown: false,
-            timer: 0,
-            maxTimer: 3.5, // sekund na ruch
-            progress: 0,
-            feedback: '👋 Gotowy?',
-            moveName: '—',
-            accuracy: 0,
-            // target pose jako znormalizowane współrzędne kluczowych punktów
-            // używamy: 0=nos, 11=lewe_ramie, 12=prawe_ramie, 13=lewy_łokieć, 14=prawy_łokieć,
-            // 15=lewy_nadgarstek, 16=prawy_nadgarstek, 23=lewy_biodro, 24=prawy_biodro
+        // ─── CONFIG ────────────────────────────────────────────────
+        const CONFIG = {
+            blockSpeed: 0.12,
+            spawnInterval: 800,
+            maxBlocks: 30,
+            saberLength: 1.8,
+            sliceRadius: 1.1,
+            handSmooth: 0.25,
+            zFar: -18,
+            zNear: 6,
+            scorePerSlice: 100,
+            comboMultiplier: 1.0,
         };
 
-        // Definicje ruchów tanecznych (współrzędne znormalizowane względem środka ramion)
-        // Każdy ruch to obiekt: { name, targets: { idx: {x, y} } }
-        // gdzie idx to numer landmarku, a x,y w skali [-1..1] (środek = 0, szerokość ramion = 1)
-        function buildDanceMoves() {
-            return [{
-                name: '🙌 Ręce w górę',
-                targets: {
-                    15: { x: -0.55, y: -0.75 },
-                    16: { x: 0.55, y: -0.75 },
-                    13: { x: -0.50, y: -0.25 },
-                    14: { x: 0.50, y: -0.25 }
-                }
-            }, {
-                name: '💪 T-Pose',
-                targets: {
-                    15: { x: -1.20, y: 0.00 },
-                    16: { x: 1.20, y: 0.00 },
-                    13: { x: -0.75, y: 0.00 },
-                    14: { x: 0.75, y: 0.00 }
-                }
-            }, {
-                name: '👉 Prawa w górę',
-                targets: {
-                    15: { x: -0.50, y: 0.25 },
-                    16: { x: 0.55, y: -0.75 },
-                    13: { x: -0.45, y: 0.00 },
-                    14: { x: 0.50, y: -0.25 }
-                }
-            }, {
-                name: '👈 Lewa w górę',
-                targets: {
-                    15: { x: -0.55, y: -0.75 },
-                    16: { x: 0.50, y: 0.25 },
-                    13: { x: -0.50, y: -0.25 },
-                    14: { x: 0.45, y: 0.00 }
-                }
-            }, {
-                name: '🤝 Skrzyżowane',
-                targets: {
-                    15: { x: 0.30, y: -0.15 },
-                    16: { x: -0.30, y: -0.15 },
-                    13: { x: -0.30, y: -0.05 },
-                    14: { x: 0.30, y: -0.05 }
-                }
-            }, {
-                name: '🕺 Ręce na biodrach',
-                targets: {
-                    15: { x: -0.35, y: 0.45 },
-                    16: { x: 0.35, y: 0.45 },
-                    13: { x: -0.50, y: 0.30 },
-                    14: { x: 0.50, y: 0.30 }
-                }
-            }, {
-                name: '🎭 Jazz',
-                targets: {
-                    15: { x: -1.10, y: 0.15 },
-                    16: { x: 1.10, y: 0.15 },
-                    13: { x: -0.70, y: -0.10 },
-                    14: { x: 0.70, y: -0.10 }
-                }
-            }, {
-                name: '💥 Cios w prawo',
-                targets: {
-                    15: { x: -0.40, y: 0.00 },
-                    16: { x: 0.80, y: -0.30 },
-                    13: { x: -0.35, y: -0.10 },
-                    14: { x: 0.30, y: -0.20 }
-                }
-            }];
+        // ─── DOM REFS ──────────────────────────────────────────────
+        const video = document.getElementById('webcam');
+        const threeContainer = document.getElementById('three-container');
+        const scoreNum = document.getElementById('score-num');
+        const comboNum = document.getElementById('combo-num');
+        const missOverlay = document.getElementById('miss-overlay');
+
+        // ─── THREE.JS SETUP ───────────────────────────────────────
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x0a0a1a);
+        scene.fog = new THREE.Fog(0x0a0a1a, 12, 28);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 40);
+        camera.position.set(0, 1.6, 4.5);
+        camera.lookAt(0, 0, -6);
+
+        const renderer = new THREE.WebGLRenderer({
+            antialias: true,
+            alpha: true,
+        });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        threeContainer.appendChild(renderer.domElement);
+
+        // ─── LIGHTS ────────────────────────────────────────────────
+        const ambientLight = new THREE.AmbientLight(0x222244, 0.6);
+        scene.add(ambientLight);
+
+        const mainLight = new THREE.DirectionalLight(0xffeedd, 1.2);
+        mainLight.position.set(5, 10, 5);
+        mainLight.castShadow = true;
+        mainLight.shadow.mapSize.width = 1024;
+        mainLight.shadow.mapSize.height = 1024;
+        scene.add(mainLight);
+
+        const rimLight = new THREE.DirectionalLight(0x4488ff, 0.6);
+        rimLight.position.set(-5, 0, -5);
+        scene.add(rimLight);
+
+        const fillLight = new THREE.DirectionalLight(0xff66aa, 0.3);
+        fillLight.position.set(0, -3, 5);
+        scene.add(fillLight);
+
+        // subtle glow points
+        const glowColors = [0xff3366, 0x33aaff, 0xffaa33];
+        for (let i = 0; i < 6; i++) {
+            const g = new THREE.PointLight(glowColors[i % 3], 0.3, 12);
+            g.position.set(
+                (Math.random() - 0.5) * 14,
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 10 - 6
+            );
+            scene.add(g);
         }
 
-        // Normalizuje landmarki: środek ramion -> (0,0), szerokość ramion -> 1
-        function normalizePose(landmarks) {
-            if (!landmarks || landmarks.length < 25) return null;
-            const ls = landmarks[11],
-                rs = landmarks[12];
-            const cx = (ls.x + rs.x) / 2,
-                cy = (ls.y + rs.y) / 2;
-            const sw = Math.sqrt((rs.x - ls.x) ** 2 + (rs.y - ls.y) ** 2) || 0.3;
-            const result = {};
-            const idxs = [0, 11, 12, 13, 14, 15, 16, 23, 24];
-            for (const i of idxs) {
-                const p = landmarks[i];
-                result[i] = { x: (p.x - cx) / sw, y: (p.y - cy) / sw };
-            }
-            return result;
+        // ─── FLOOR GRID ────────────────────────────────────────────
+        const gridHelper = new THREE.GridHelper(30, 20, 0x4466ff, 0x2244aa);
+        gridHelper.position.y = -2.2;
+        gridHelper.material.transparent = true;
+        gridHelper.material.opacity = 0.25;
+        scene.add(gridHelper);
+
+        // glow rings on floor
+        for (let i = 0; i < 3; i++) {
+            const ringGeo = new THREE.RingGeometry(1.5 + i * 1.8, 1.8 + i * 1.8, 64);
+            const ringMat = new THREE.MeshBasicMaterial({
+                color: 0x4488ff,
+                transparent: true,
+                opacity: 0.06 - i * 0.015,
+                side: THREE.DoubleSide,
+                depthWrite: false,
+            });
+            const ring = new THREE.Mesh(ringGeo, ringMat);
+            ring.rotation.x = -Math.PI / 2;
+            ring.position.y = -2.15;
+            scene.add(ring);
         }
 
-        // Porównuje pozę użytkownika z docelową
-        function comparePose(userNorm, target) {
-            if (!userNorm) return 1.0;
-            const keys = [13, 14, 15, 16]; // łokcie i nadgarstki
-            let totalDist = 0,
-                count = 0;
-            for (const k of keys) {
-                if (userNorm[k] && target[k]) {
-                    const dx = userNorm[k].x - target[k].x;
-                    const dy = userNorm[k].y - target[k].y;
-                    totalDist += Math.sqrt(dx * dx + dy * dy);
-                    count++;
+        // ─── GAME STATE ────────────────────────────────────────────
+        const blocks = [];
+        const slices = [];
+        let score = 0;
+        let combo = 0;
+        let maxCombo = 0;
+        let totalSliced = 0;
+        let totalMissed = 0;
+        let lastSpawnTime = 0;
+        let gameRunning = true;
+
+        // hand states
+        const hands = {
+            left: {
+                pos: new THREE.Vector3(-2, 0, 0),
+                prevPos: new THREE.Vector3(-2, 0, 0),
+                vel: new THREE.Vector3(),
+                active: false,
+                landmarks: null,
+                saber: null,
+                trail: [],
+                color: 0xff4466,
+            },
+            right: {
+                pos: new THREE.Vector3(2, 0, 0),
+                prevPos: new THREE.Vector3(2, 0, 0),
+                vel: new THREE.Vector3(),
+                active: false,
+                landmarks: null,
+                saber: null,
+                trail: [],
+                color: 0x44aaff,
+            }
+        };
+
+        // ─── SABER OBJECTS ─────────────────────────────────────────
+        function createSaber(color) {
+            const group = new THREE.Group();
+
+            // blade glow
+            const bladeGeo = new THREE.CylinderGeometry(0.035, 0.045, CONFIG.saberLength, 8, 1);
+            const bladeMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.9,
+            });
+            const blade = new THREE.Mesh(bladeGeo, bladeMat);
+            blade.position.y = CONFIG.saberLength / 2;
+            blade.castShadow = true;
+            group.add(blade);
+
+            // inner bright core
+            const coreGeo = new THREE.CylinderGeometry(0.015, 0.02, CONFIG.saberLength * 0.9, 6);
+            const coreMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.5,
+            });
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            core.position.y = CONFIG.saberLength / 2;
+            group.add(core);
+
+            // glow aura (point light)
+            const glow = new THREE.PointLight(color, 0.8, 4);
+            glow.position.y = CONFIG.saberLength / 2;
+            group.add(glow);
+
+            // handle
+            const handleGeo = new THREE.CylinderGeometry(0.055, 0.07, 0.25, 8);
+            const handleMat = new THREE.MeshStandardMaterial({
+                color: 0x222233,
+                metalness: 0.8,
+                roughness: 0.3,
+            });
+            const handle = new THREE.Mesh(handleGeo, handleMat);
+            handle.position.y = -0.05;
+            handle.castShadow = true;
+            group.add(handle);
+
+            // handle ring
+            const ringGeo2 = new THREE.TorusGeometry(0.065, 0.015, 8, 12);
+            const ringMat2 = new THREE.MeshStandardMaterial({
+                color: color,
+                metalness: 0.6,
+                roughness: 0.3,
+                emissive: color,
+                emissiveIntensity: 0.2,
+            });
+            const ring2 = new THREE.Mesh(ringGeo2, ringMat2);
+            ring2.position.y = 0.08;
+            ring2.rotation.x = Math.PI / 2;
+            group.add(ring2);
+
+            // tip glow
+            const tipGeo = new THREE.SphereGeometry(0.05, 8, 8);
+            const tipMat = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.7,
+            });
+            const tip = new THREE.Mesh(tipGeo, tipMat);
+            tip.position.y = CONFIG.saberLength + 0.02;
+            group.add(tip);
+
+            // trail particles (will be managed separately)
+            group.userData.trailParticles = [];
+            group.userData.trailPositions = [];
+
+            return group;
+        }
+
+        // ─── BLOCK FACTORY ──────────────────────────────────────────
+        function createBlock() {
+            const size = 0.55 + Math.random() * 0.25;
+            const color = new THREE.Color().setHSL(Math.random() * 0.8 + 0.1, 0.9, 0.55);
+
+            // main cube
+            const geo = new THREE.BoxGeometry(size, size, size);
+            const mat = new THREE.MeshStandardMaterial({
+                color: color,
+                metalness: 0.2,
+                roughness: 0.4,
+                emissive: color,
+                emissiveIntensity: 0.15,
+                transparent: true,
+                opacity: 0.95,
+            });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+
+            // glow edge
+            const edgeGeo = new THREE.EdgesGeometry(geo);
+            const edgeMat = new THREE.LineBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.5,
+            });
+            const edge = new THREE.LineSegments(edgeGeo, edgeMat);
+            mesh.add(edge);
+
+            // inner glow sphere
+            const innerGeo = new THREE.SphereGeometry(size * 0.2, 8, 8);
+            const innerMat = new THREE.MeshBasicMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.3,
+            });
+            const inner = new THREE.Mesh(innerGeo, innerMat);
+            mesh.add(inner);
+
+            // position
+            const x = (Math.random() - 0.5) * 9;
+            const y = (Math.random() - 0.5) * 4.5 + 0.5;
+            const z = CONFIG.zFar + (Math.random() - 0.5) * 4;
+
+            mesh.position.set(x, y, z);
+            mesh.rotation.set(
+                Math.random() * 0.5,
+                Math.random() * 0.5,
+                Math.random() * 0.5
+            );
+
+            // random direction hint (visual arrow)
+            const dir = Math.floor(Math.random() * 4);
+            const arrowColors = [0xff4444, 0x44ff44, 0x4488ff, 0xffaa44];
+            const arrowDir = [
+                new THREE.Vector3(0, 1, 0),
+                new THREE.Vector3(0, -1, 0),
+                new THREE.Vector3(1, 0, 0),
+                new THREE.Vector3(-1, 0, 0)
+            ];
+            const arrow = new THREE.ArrowHelper(
+                arrowDir[dir],
+                new THREE.Vector3(0, 0, 0),
+                size * 0.5,
+                arrowColors[dir],
+                0.15,
+                0.1
+            );
+            mesh.add(arrow);
+
+            // store data
+            mesh.userData = {
+                color: color,
+                size: size,
+                speed: CONFIG.blockSpeed * (0.85 + Math.random() * 0.3),
+                sliced: false,
+                spawnZ: z,
+                rotSpeed: new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.03,
+                    (Math.random() - 0.5) * 0.03,
+                    (Math.random() - 0.5) * 0.03
+                ),
+                dir: dir,
+                arrowDir: arrowDir[dir],
+            };
+
+            return mesh;
+        }
+
+        // ─── SLICE EFFECT ──────────────────────────────────────────
+        function createSliceEffect(position, color, size) {
+            const count = 30;
+            const particles = [];
+
+            const geo = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const sizes = new Float32Array(count);
+            const velocities = [];
+            const lifetimes = [];
+
+            const baseColor = new THREE.Color(color);
+
+            for (let i = 0; i < count; i++) {
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.random() * Math.PI * 0.8;
+                const r = 0.2 + Math.random() * 0.6;
+
+                positions[i * 3] = position.x + Math.sin(theta) * Math.cos(phi) * r;
+                positions[i * 3 + 1] = position.y + Math.sin(phi) * r * 0.6;
+                positions[i * 3 + 2] = position.z + Math.cos(theta) * Math.cos(phi) * r;
+
+                const c = baseColor.clone().lerp(new THREE.Color(0xffffff), Math.random() * 0.5);
+                colors[i * 3] = c.r;
+                colors[i * 3 + 1] = c.g;
+                colors[i * 3 + 2] = c.b;
+
+                sizes[i] = 0.04 + Math.random() * 0.12;
+                velocities.push(new THREE.Vector3(
+                    (Math.random() - 0.5) * 0.15,
+                    (Math.random() - 0.5) * 0.15 + 0.05,
+                    (Math.random() - 0.5) * 0.15
+                ));
+                lifetimes.push(0.6 + Math.random() * 0.5);
+            }
+
+            geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const mat = new THREE.PointsMaterial({
+                size: 0.1,
+                vertexColors: true,
+                transparent: true,
+                opacity: 1,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                sizeAttenuation: true,
+            });
+            const mesh = new THREE.Points(geo, mat);
+
+            scene.add(mesh);
+
+            return {
+                mesh,
+                velocities,
+                lifetimes,
+                age: 0,
+                maxAge: 1.2,
+                update(dt) {
+                    this.age += dt;
+                    const pos = this.mesh.geometry.attributes.position;
+                    const arr = pos.array;
+                    const life = Math.max(0, 1 - this.age / this.maxAge);
+                    this.mesh.material.opacity = life * 0.9;
+
+                    for (let i = 0; i < count; i++) {
+                        arr[i * 3] += velocities[i].x * dt * 1.5;
+                        arr[i * 3 + 1] += velocities[i].y * dt * 1.5;
+                        arr[i * 3 + 2] += velocities[i].z * dt * 1.5;
+                        velocities[i].y -= dt * 0.1;
+                        velocities[i].x *= 0.99;
+                        velocities[i].z *= 0.99;
+                    }
+                    pos.needsUpdate = true;
+                    return this.age < this.maxAge;
+                }
+            };
+        }
+
+        // ─── HAND TRACKING → 3D MAPPING ─────────────────────────
+        function mapHandTo3D(landmarks, w, h) {
+            if (!landmarks || landmarks.length < 21) return null;
+
+            const wrist = landmarks[0];
+            const indexTip = landmarks[8];
+            const thumbTip = landmarks[4];
+
+            // Use wrist for position, but also get depth from hand
+            const x = (wrist.x - 0.5) * 10;
+            const y = (0.5 - wrist.y) * 7;
+            // z from mediapipe (0 at wrist, positive toward camera)
+            // map to scene z: -2 to 4
+            const z = -1.5 + wrist.z * 8;
+
+            // hand size for depth scaling
+            const handSize = Math.sqrt(
+                Math.pow(landmarks[5].x - landmarks[17].x, 2) +
+                Math.pow(landmarks[5].y - landmarks[17].y, 2) +
+                Math.pow(landmarks[5].z - landmarks[17].z, 2)
+            );
+
+            // direction of index finger
+            const dir = new THREE.Vector3(
+                indexTip.x - wrist.x,
+                indexTip.y - wrist.y,
+                indexTip.z - wrist.z
+            ).normalize();
+
+            const pos = new THREE.Vector3(x, y, z);
+
+            return {
+                pos,
+                dir,
+                handSize,
+                wrist,
+                indexTip,
+                thumbTip,
+            };
+        }
+
+        // ─── SLICE DETECTION ──────────────────────────────────────
+        function checkSlice(handPos, prevPos, handColor, handName) {
+            const speed = handPos.distanceTo(prevPos);
+            if (speed < 0.06) return; // too slow
+
+            const dir = new THREE.Vector3().copy(handPos).sub(prevPos).normalize();
+
+            for (let i = blocks.length - 1; i >= 0; i--) {
+                const block = blocks[i];
+                if (block.userData.sliced) continue;
+
+                const toBlock = new THREE.Vector3().copy(block.position).sub(handPos);
+                const dist = toBlock.length();
+
+                // Check if hand is near block
+                if (dist < CONFIG.sliceRadius * 0.7) {
+                    // Check if hand moved through block (projection)
+                    const proj = toBlock.dot(dir);
+                    if (proj > -0.3 && proj < 0.8) {
+                        // Check if block is close to the line of movement
+                        const perpDist = toBlock.clone().add(dir.clone().multiplyScalar(-proj)).length();
+                        if (perpDist < CONFIG.sliceRadius * 0.6) {
+                            // SLICE!
+                            block.userData.sliced = true;
+                            const pos = block.position.clone();
+
+                            // create slice effect
+                            const effect = createSliceEffect(pos, handColor, block.userData.size);
+                            slices.push(effect);
+
+                            // score
+                            const bonus = Math.floor(combo / 5) + 1;
+                            const points = CONFIG.scorePerSlice + bonus * 10;
+                            score += points;
+                            combo++;
+                            if (combo > maxCombo) maxCombo = combo;
+                            totalSliced++;
+
+                            updateUI();
+
+                            // remove block with animation
+                            scene.remove(block);
+                            blocks.splice(i, 1);
+
+                            // spawn a few particles
+                            for (let j = 0; j < 6; j++) {
+                                const p = createSliceEffect(
+                                    pos.clone().add(new THREE.Vector3(
+                                        (Math.random() - 0.5) * 0.6,
+                                        (Math.random() - 0.5) * 0.6,
+                                        (Math.random() - 0.5) * 0.6
+                                    )),
+                                    handColor,
+                                    0.2
+                                );
+                                slices.push(p);
+                            }
+
+                            // combo popup
+                            if (combo > 0 && combo % 5 === 0) {
+                                showComboPopup(combo);
+                            }
+
+                            return true;
+                        }
+                    }
                 }
             }
-            if (count === 0) return 1.0;
-            const avg = totalDist / count;
-            // im mniejszy dystans tym lepiej, skalujemy do 0-1
-            const score = Math.max(0, Math.min(1, 1 - avg * 0.6));
-            return score;
+            return false;
         }
 
-        // Rysowanie na canvasie
-        function drawDanceFrame() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            const dpr = window.devicePixelRatio || 1;
-            const w = rect.width || 640;
-            const h = rect.height || 480;
-            canvas.width = w * dpr;
-            canvas.height = h * dpr;
-            canvas.style.width = w + 'px';
-            canvas.style.height = h + 'px';
-            ctx.setTransform(1, 0, 0, 1, 0, 0);
-            ctx.scale(dpr, dpr);
+        // ─── COMBO POPUP ──────────────────────────────────────────
+        let comboPopupTimeout = null;
 
-            // tło
-            ctx.fillStyle = '#0b0b0e';
-            ctx.fillRect(0, 0, w, h);
+        function showComboPopup(c) {
+            const el = document.getElementById('combo-display');
+            el.style.transform = 'translateX(-50%) scale(1.3)';
+            el.style.color = '#ff88ff';
+            setTimeout(() => {
+                el.style.transform = 'translateX(-50%) scale(1)';
+                el.style.color = '#fff';
+            }, 200);
+        }
 
-            // podział: lewa połowa → cel, prawa połowa → użytkownik
-            const midX = w / 2;
+        // ─── UI UPDATE ────────────────────────────────────────────
+        function updateUI() {
+            scoreNum.textContent = score;
+            comboNum.textContent = combo;
+        }
 
-            // ---- Rysuj cel (po lewej) ----
-            ctx.save();
-            ctx.translate(midX / 2, h / 2);
-            const scale = Math.min(w, h) * 0.22;
-            if (dance.moves.length > 0 && dance.currentIndex < dance.moves.length) {
-                const move = dance.moves[dance.currentIndex];
-                drawStickFigure(ctx, move.targets, scale, '#66ddff', '#3399ff');
-                // nazwa ruchu
-                ctx.fillStyle = '#66ddff';
-                ctx.font = 'bold 18px Segoe UI, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText(move.name, 0, -scale * 1.35);
+        // ─── MISS HANDLER ──────────────────────────────────────────
+        function handleMiss() {
+            combo = 0;
+            totalMissed++;
+            updateUI();
+            missOverlay.classList.add('show');
+            setTimeout(() => missOverlay.classList.remove('show'), 300);
+        }
+
+        // ─── SPAWN BLOCKS ──────────────────────────────────────────
+        function spawnBlock() {
+            if (blocks.length >= CONFIG.maxBlocks) return;
+            const block = createBlock();
+            scene.add(block);
+            blocks.push(block);
+        }
+
+        // ─── UPDATE BLOCKS ─────────────────────────────────────────
+        function updateBlocks(dt) {
+            for (let i = blocks.length - 1; i >= 0; i--) {
+                const block = blocks[i];
+                // move toward player
+                block.position.z += block.userData.speed * dt * 2.5;
+
+                // rotate
+                block.rotation.x += block.userData.rotSpeed.x;
+                block.rotation.y += block.userData.rotSpeed.y;
+                block.rotation.z += block.userData.rotSpeed.z;
+
+                // pulse glow
+                const pulse = 0.8 + 0.2 * Math.sin(Date.now() * 0.003 + i);
+                block.material.emissiveIntensity = 0.1 + pulse * 0.15;
+
+                // check if passed player (miss)
+                if (block.position.z > CONFIG.zNear) {
+                    if (!block.userData.sliced) {
+                        handleMiss();
+                    }
+                    scene.remove(block);
+                    blocks.splice(i, 1);
+                }
             }
-            ctx.restore();
+        }
 
-            // ---- Rysuj użytkownika (po prawej) ----
-            ctx.save();
-            ctx.translate(midX + midX / 2, h / 2);
-            if (latestPose) {
-                const norm = normalizePose(latestPose);
-                if (norm) {
-                    drawStickFigure(ctx, norm, scale, '#ffdd44', '#ff8833');
-                    // mała etykieta
-                    ctx.fillStyle = '#ffdd44';
-                    ctx.font = 'bold 14px Segoe UI, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('TY', 0, -scale * 1.35);
+        // ─── UPDATE SABER TRAIL ──────────────────────────────────
+        function updateSaberTrail(hand, dt) {
+            const trail = hand.trail;
+            trail.push(hand.pos.clone());
+            if (trail.length > 18) trail.shift();
+
+            // update saber position
+            if (hand.saber) {
+                hand.saber.position.copy(hand.pos);
+
+                // orient saber toward movement direction or forward
+                if (hand.vel.length() > 0.01) {
+                    const lookTarget = hand.pos.clone().add(hand.vel.clone().normalize());
+                    hand.saber.lookAt(lookTarget);
                 } else {
-                    ctx.fillStyle = '#666';
-                    ctx.font = '20px Segoe UI, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('⏳ Brak sylwetki', 0, 0);
+                    hand.saber.rotation.set(0, 0, 0);
                 }
-            } else {
-                ctx.fillStyle = '#666';
-                ctx.font = '20px Segoe UI, sans-serif';
-                ctx.textAlign = 'center';
-                ctx.fillText('⏳ Oczekiwanie na kamerę...', 0, 0);
-            }
-            ctx.restore();
 
-            // ---- linia podziału ----
-            ctx.strokeStyle = '#2d2d35';
-            ctx.lineWidth = 1;
-            ctx.setLineDash([6, 6]);
-            ctx.beginPath();
-            ctx.moveTo(midX, 0);
-            ctx.lineTo(midX, h);
-            ctx.stroke();
-            ctx.setLineDash([]);
+                // tilt based on velocity
+                const tilt = Math.min(hand.vel.length() * 0.5, 0.6);
+                hand.saber.rotation.z += hand.vel.x * 0.2;
+                hand.saber.rotation.x += hand.vel.y * 0.1;
 
-            // ---- etykiety ----
-            ctx.fillStyle = '#555';
-            ctx.font = '12px Segoe UI, sans-serif';
-            ctx.textAlign = 'center';
-            ctx.fillText('👤 WZÓR', midX / 2, h - 14);
-            ctx.fillText('📸 TWOJA POZA', midX + midX / 2, h - 14);
+                // brightness based on speed
+                const intensity = Math.min(0.5 + hand.vel.length() * 2, 2.0);
+                const light = hand.saber.children.find(c => c.isPointLight);
+                if (light) light.intensity = intensity * 0.6;
 
-            // ---- feedback na canvasie ----
-            if (dance.isRunning || dance.isCountingDown) {
-                ctx.fillStyle = 'rgba(0,0,0,0.5)';
-                ctx.fillRect(0, 0, w, 40);
-                ctx.fillStyle = '#fff';
-                ctx.font = 'bold 20px Segoe UI, sans-serif';
-                ctx.textAlign = 'center';
-                let txt = dance.moveName || '—';
-                if (dance.isCountingDown) txt = '⏳ ' + Math.ceil(dance.timer) + 's';
-                ctx.fillText(txt, w / 2, 28);
-            }
-        }
-
-        // Rysuje sylwetkę (stick figure) z podanych punktów
-        function drawStickFigure(ctx, pts, scale, color, jointColor) {
-            if (!pts) return;
-            const get = (idx) => pts[idx] ? { x: pts[idx].x * scale, y: pts[idx].y * scale } : null;
-
-            const head = get(0);
-            const ls = get(11),
-                rs = get(12);
-            const le = get(13),
-                re = get(14);
-            const lw = get(15),
-                rw = get(16);
-            const lh = get(23),
-                rh = get(24);
-
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3.5;
-            ctx.lineCap = 'round';
-            ctx.lineJoin = 'round';
-            ctx.shadowColor = color + '40';
-            ctx.shadowBlur = 12;
-
-            // głowa (kółko)
-            if (head) {
-                ctx.beginPath();
-                ctx.arc(head.x, head.y, scale * 0.12, 0, Math.PI * 2);
-                ctx.stroke();
-                ctx.shadowBlur = 0;
-            }
-
-            // tułów
-            if (ls && rs && lh && rh) {
-                const cy = (ls.y + rs.y + lh.y + rh.y) / 4;
-                ctx.beginPath();
-                ctx.moveTo((ls.x + rs.x) / 2, (ls.y + rs.y) / 2);
-                ctx.lineTo((lh.x + rh.x) / 2, (lh.y + rh.y) / 2);
-                ctx.stroke();
-                // ramiona
-                ctx.beginPath();
-                ctx.moveTo(ls.x, ls.y);
-                ctx.lineTo(rs.x, rs.y);
-                ctx.stroke();
-                // biodra
-                ctx.beginPath();
-                ctx.moveTo(lh.x, lh.y);
-                ctx.lineTo(rh.x, rh.y);
-                ctx.stroke();
-            }
-
-            // lewe ramię
-            if (ls && le && lw) {
-                ctx.beginPath();
-                ctx.moveTo(ls.x, ls.y);
-                ctx.lineTo(le.x, le.y);
-                ctx.lineTo(lw.x, lw.y);
-                ctx.stroke();
-            }
-            // prawe ramię
-            if (rs && re && rw) {
-                ctx.beginPath();
-                ctx.moveTo(rs.x, rs.y);
-                ctx.lineTo(re.x, re.y);
-                ctx.lineTo(rw.x, rw.y);
-                ctx.stroke();
-            }
-
-            // stawy (joints)
-            ctx.shadowBlur = 0;
-            const joints = [head, ls, rs, le, re, lw, rw, lh, rh];
-            for (const j of joints) {
-                if (j) {
-                    ctx.fillStyle = jointColor || color;
-                    ctx.beginPath();
-                    ctx.arc(j.x, j.y, scale * 0.045, 0, Math.PI * 2);
-                    ctx.fill();
+                // blade opacity
+                const blade = hand.saber.children.find(c => c.isMesh && c.geometry.type === 'CylinderGeometry');
+                if (blade) {
+                    blade.material.opacity = 0.6 + Math.min(hand.vel.length() * 3, 0.4);
                 }
             }
-            ctx.shadowBlur = 0;
         }
 
-        // ================================================================
-        //  6.  DANCE GAME – sterowanie
-        // ================================================================
-        let danceAnimFrame = null;
-        let danceInterval = null;
+        // ─── RENDER LOOP ───────────────────────────────────────────
+        let lastTime = 0;
 
-        function stopDanceGame() {
-            dance.isRunning = false;
-            dance.isCountingDown = false;
-            clearInterval(danceInterval);
-            danceInterval = null;
-            document.getElementById('danceStartBtn').disabled = false;
-        }
+        function animate(time) {
+            const dt = Math.min((time - lastTime) / 16.667, 3);
+            lastTime = time;
 
-        function startDanceGame() {
-            if (dance.isRunning || dance.isCountingDown) return;
-            dance.moves = buildDanceMoves();
-            dance.currentIndex = 0;
-            dance.totalScore = 0;
-            dance.hits = 0;
-            dance.totalAttempts = 0;
-            dance.score = 0;
-            dance.timer = dance.maxTimer;
-            dance.progress = 0;
-            dance.feedback = '👋 Przygotuj się!';
-            document.getElementById('danceTotalScore').innerText = '0';
-            document.getElementById('danceHit').innerText = '0';
-            document.getElementById('danceAccuracy').innerText = '0%';
-            document.getElementById('danceTimer').innerText = '0';
-            document.getElementById('danceMoveName').innerText = '—';
-            document.getElementById('danceProgress').style.width = '0%';
-            document.getElementById('danceFeedback').innerText = '⏳ 3...';
-            document.getElementById('danceStartBtn').disabled = true;
-
-            // countdown 3-2-1
-            let count = 3;
-            dance.isCountingDown = true;
-            const cdInterval = setInterval(() => {
-                if (count > 0) {
-                    document.getElementById('danceFeedback').innerText = '⏳ ' + count + '...';
-                    count--;
-                } else {
-                    clearInterval(cdInterval);
-                    dance.isCountingDown = false;
-                    document.getElementById('danceFeedback').innerText = '🎵 Taniec!';
-                    // rozpocznij grę
-                    dance.isRunning = true;
-                    dance.currentIndex = 0;
-                    dance.timer = dance.maxTimer;
-                    showDanceMove(0);
-                    // interwał aktualizacji
-                    danceInterval = setInterval(updateDanceTick, 120);
+            // spawn blocks
+            if (time - lastSpawnTime > CONFIG.spawnInterval) {
+                spawnBlock();
+                // sometimes spawn extra
+                if (Math.random() < 0.2 && blocks.length < CONFIG.maxBlocks - 2) {
+                    setTimeout(() => spawnBlock(), 100);
                 }
-            }, 700);
+                lastSpawnTime = time;
+            }
+
+            // update blocks
+            updateBlocks(dt);
+
+            // update slice effects
+            for (let i = slices.length - 1; i >= 0; i--) {
+                const s = slices[i];
+                const alive = s.update(dt);
+                if (!alive) {
+                    scene.remove(s.mesh);
+                    slices.splice(i, 1);
+                }
+            }
+
+            // update sabers
+            for (const key of ['left', 'right']) {
+                const hand = hands[key];
+                if (hand.active && hand.saber) {
+                    updateSaberTrail(hand, dt);
+                }
+            }
+
+            // auto-spawn if not enough blocks
+            if (blocks.length < 8 && Math.random() < 0.05) {
+                spawnBlock();
+            }
+
+            renderer.render(scene, camera);
+            requestAnimationFrame(animate);
         }
 
-        function showDanceMove(index) {
-            if (index >= dance.moves.length) {
-                endDanceGame();
+        // ─── RESIZE ────────────────────────────────────────────────
+        window.addEventListener('resize', () => {
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+            camera.aspect = w / h;
+            camera.updateProjectionMatrix();
+            renderer.setSize(w, h);
+        });
+
+        // ─── MEDIAPIPE HANDS ──────────────────────────────────────
+        function onResults(results) {
+            if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
+                for (const key of ['left', 'right']) {
+                    hands[key].active = false;
+                    if (hands[key].saber) {
+                        hands[key].saber.visible = false;
+                    }
+                }
                 return;
             }
-            const move = dance.moves[index];
-            dance.moveName = move.name;
-            dance.timer = dance.maxTimer;
-            dance.progress = 0;
-            document.getElementById('danceMoveName').innerText = move.name;
-            document.getElementById('danceFeedback').innerText = '💃 Naśladuj!';
-            document.getElementById('danceProgress').style.width = '0%';
-            // reset wyniku dla tego ruchu
-            dance.score = 0;
-        }
 
-        function updateDanceTick() {
-            if (!dance.isRunning) return;
+            const w = video.videoWidth || 640;
+            const h = video.videoHeight || 480;
 
-            dance.timer -= 0.12;
-            dance.progress = Math.max(0, (dance.maxTimer - dance.timer) / dance.maxTimer);
-            document.getElementById('danceProgress').style.width = (dance.progress * 100) + '%';
-            document.getElementById('danceTimer').innerText = Math.ceil(dance.timer);
+            // Process each hand
+            for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+                const landmarks = results.multiHandLandmarks[i];
+                const handedness = results.multiHandedness[i]?.label || 'Right';
+                const isLeft = handedness === 'Left';
 
-            // ocena pozy w tym momencie
-            if (latestPose) {
-                const norm = normalizePose(latestPose);
-                if (norm) {
-                    const move = dance.moves[dance.currentIndex];
-                    const sim = comparePose(norm, move.targets);
-                    const pts = Math.round(sim * 100);
-                    dance.score = Math.max(dance.score, pts);
-                    dance.totalAttempts++;
-                    if (sim > 0.55) {
-                        dance.hits++;
-                        document.getElementById('danceFeedback').innerHTML = '✅ <span style="color:#66ff88;">' + pts +
-                            '%</span>';
-                    } else {
-                        document.getElementById('danceFeedback').innerHTML = '🔄 <span style="color:#ff8866;">' + pts +
-                            '%</span>';
-                    }
-                    // aktualizuj dokładność
-                    const acc = dance.totalAttempts > 0 ? Math.round((dance.hits / dance.totalAttempts) * 100) : 0;
-                    document.getElementById('danceAccuracy').innerText = acc + '%';
-                }
-            }
+                const key = isLeft ? 'left' : 'right';
+                const hand = hands[key];
 
-            // koniec ruchu?
-            if (dance.timer <= 0) {
-                // zapisz wynik
-                dance.totalScore += dance.score;
-                document.getElementById('danceTotalScore').innerText = dance.totalScore;
-                document.getElementById('danceHit').innerText = dance.hits;
+                const mapped = mapHandTo3D(landmarks, w, h);
+                if (!mapped) continue;
 
-                // przejdź do następnego
-                dance.currentIndex++;
-                if (dance.currentIndex >= dance.moves.length) {
-                    endDanceGame();
+                // smooth position
+                const targetPos = mapped.pos;
+                if (hand.active) {
+                    hand.pos.lerp(targetPos, CONFIG.handSmooth);
                 } else {
-                    showDanceMove(dance.currentIndex);
-                    document.getElementById('danceFeedback').innerText = '⏭️ Następny!';
+                    hand.pos.copy(targetPos);
+                    hand.active = true;
+                }
+
+                hand.prevPos.copy(hand.pos);
+                hand.vel.copy(hand.pos).sub(hand.prevPos).multiplyScalar(1 / 0.016);
+
+                // create saber if not exists
+                if (!hand.saber) {
+                    hand.saber = createSaber(hand.color);
+                    scene.add(hand.saber);
+                }
+                hand.saber.visible = true;
+
+                // update hand data
+                hand.landmarks = landmarks;
+
+                // check slices
+                if (hand.prevPos && hand.pos) {
+                    checkSlice(hand.pos, hand.prevPos, hand.color, key);
+                }
+
+                // store for next frame
+                hand.prevPos.copy(hand.pos);
+            }
+
+            // Hide sabers for hands not detected
+            for (const key of ['left', 'right']) {
+                if (!hands[key].active) {
+                    if (hands[key].saber) hands[key].saber.visible = false;
                 }
             }
         }
 
-        function endDanceGame() {
-            stopDanceGame();
-            dance.isRunning = false;
-            document.getElementById('danceFeedback').innerHTML = '🏆 <span style="color:#ffdd44;">KONIEC! Wynik: ' + dance
-                .totalScore + ' pkt</span>';
-            document.getElementById('danceMoveName').innerText = '🎉 Ukończono!';
-            document.getElementById('danceStartBtn').disabled = false;
-            document.getElementById('danceProgress').style.width = '100%';
-            // zapisz finalną dokładność
-            const acc = dance.totalAttempts > 0 ? Math.round((dance.hits / dance.totalAttempts) * 100) : 0;
-            document.getElementById('danceAccuracy').innerText = acc + '%';
-        }
+        // ─── INIT MEDIAPIPE ──────────────────────────────────────
+        const handsInstance = new Hands({
+            locateFile: (file) =>
+                `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`,
+        });
 
-        function resetDanceGame() {
-            stopDanceGame();
-            dance.isRunning = false;
-            dance.isCountingDown = false;
-            dance.currentIndex = 0;
-            dance.totalScore = 0;
-            dance.hits = 0;
-            dance.totalAttempts = 0;
-            dance.score = 0;
-            dance.timer = dance.maxTimer;
-            dance.progress = 0;
-            dance.moves = buildDanceMoves();
-            document.getElementById('danceTotalScore').innerText = '0';
-            document.getElementById('danceHit').innerText = '0';
-            document.getElementById('danceAccuracy').innerText = '0%';
-            document.getElementById('danceTimer').innerText = '0';
-            document.getElementById('danceMoveName').innerText = '—';
-            document.getElementById('danceProgress').style.width = '0%';
-            document.getElementById('danceFeedback').innerText = '🔄 Zresetowano. Kliknij Start!';
-            document.getElementById('danceStartBtn').disabled = false;
-        }
+        handsInstance.setOptions({
+            maxNumHands: 2,
+            modelComplexity: 1,
+            minDetectionConfidence: 0.7,
+            minTrackingConfidence: 0.6,
+        });
 
-        // ================================================================
-        //  7.  PĘTLA ANIMACJI KURSORA (hand mode)
-        // ================================================================
-        function updateCursorAnimation() {
-            currentX += (targetX - currentX) * SMOOTHING_FACTOR;
-            currentY += (targetY - currentY) * SMOOTHING_FACTOR;
-            cursorElement.style.left = currentX + 'px';
-            cursorElement.style.top = currentY + 'px';
-            requestAnimationFrame(updateCursorAnimation);
-        }
-        requestAnimationFrame(updateCursorAnimation);
-        updateClickablesCache();
+        handsInstance.onResults(onResults);
 
-        // ================================================================
-        //  8.  PĘTLA RYSOWANIA DANCE
-        // ================================================================
-        function danceRenderLoop() {
-            if (currentMode === 'dance') {
-                drawDanceFrame();
-            }
-            requestAnimationFrame(danceRenderLoop);
-        }
-        danceRenderLoop();
-
-        // ================================================================
-        //  9.  KAMERA – współdzielona
-        // ================================================================
-        function startCamera() {
-            if (cameraInstance) {
-                cameraInstance.stop();
-                cameraInstance = null;
-            }
-            cameraInstance = new Camera(videoElement, {
-                onFrame: async () => {
-                    if (currentMode === 'hand' && handsInstance) {
-                        await handsInstance.send({ image: videoElement });
-                    } else if (currentMode === 'dance' && poseInstance) {
-                        await poseInstance.send({ image: videoElement });
-                    }
-                },
-                width: 640,
-                height: 480
-            });
-            cameraInstance.start();
-        }
-
-        // ================================================================
-        //  10.  PRZEŁĄCZANIE TRYBÓW
-        // ================================================================
-        function setMode(mode) {
-            currentMode = mode;
-            document.getElementById('modeHand').classList.toggle('active', mode === 'hand');
-            document.getElementById('modeDance').classList.toggle('active', mode === 'dance');
-
-            document.getElementById('hand-section').style.display = (mode === 'hand') ? 'block' : 'none';
-            document.getElementById('dance-section').classList.toggle('active', mode === 'dance');
-
-            cursorElement.style.display = (mode === 'hand') ? 'block' : 'none';
-
-            // zatrzymaj grę jeśli przełączono
-            if (mode === 'hand') {
-                stopDanceGame();
-            }
-
-            // restart kamery z odpowiednim modelem
-            // (camera zostanie zrestartowana przez startCamera)
-            // ale musimy ponownie zainicjować odpowiedni model
-            if (mode === 'hand') {
-                if (!handsInstance) initHands();
-                poseModelActive = false;
-                handModelActive = true;
-            } else {
-                if (!poseInstance) initPose();
-                handModelActive = false;
-                poseModelActive = true;
-                // reset gry jeśli nie jest uruchomiona
-                if (!dance.isRunning && !dance.isCountingDown) {
-                    resetDanceGame();
+        // ─── CAMERA ────────────────────────────────────────────────
+        const cameraHelper = new Camera(video, {
+            onFrame: async () => {
+                try {
+                    await handsInstance.send({ image: video });
+                } catch (e) {
+                    // silently handle
                 }
+            },
+            width: 640,
+            height: 480,
+        });
+
+        cameraHelper.start();
+
+        // ─── START GAME ────────────────────────────────────────────
+        updateUI();
+        requestAnimationFrame(animate);
+
+        // spawn initial blocks
+        for (let i = 0; i < 10; i++) {
+            setTimeout(() => spawnBlock(), i * 120);
+        }
+
+        console.log('🔥 Beat Saber with Hand Tracking!');
+        console.log('📐 Move your hands to slice blocks.');
+
+        // ─── KEYBOARD SHORTCUTS (debug) ──────────────────────────
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                // reset score
+                score = 0;
+                combo = 0;
+                updateUI();
             }
-            // restart kamery
-            startCamera();
-        }
-
-        // Przyciski trybów
-        document.getElementById('modeHand').addEventListener('click', () => setMode('hand'));
-        document.getElementById('modeDance').addEventListener('click', () => setMode('dance'));
-
-        // Przyciski dance
-        document.getElementById('danceStartBtn').addEventListener('click', startDanceGame);
-        document.getElementById('danceResetBtn').addEventListener('click', resetDanceGame);
-
-        // ================================================================
-        //  11.  INICJALIZACJA
-        // ================================================================
-        // Ustawienie rozmiaru canvasu
-        function resizeCanvas() {
-            const rect = canvas.parentElement.getBoundingClientRect();
-            // rozmiar ustalany w drawDanceFrame
-        }
-        window.addEventListener('resize', resizeCanvas);
-
-        // Inicjalizacja modeli
-        initHands();
-        initPose();
-
-        // Domyślnie tryb hand
-        setMode('hand');
-
-        // Na wszelki wypadek, gdyby kamera nie wystartowała
-        setTimeout(() => {
-            if (!cameraInstance) startCamera();
-        }, 300);
-
-        // Uruchomienie odświeżania cache klikalnych co 2s
-        setInterval(updateClickablesCache, 2000);
-
-        console.log('🚀 Wirtualny Kursor Lab + Just Dance gotowy!');
-        console.log('📌 Tryb Ręka: steruj kursorem, gry gestowe');
-        console.log('💃 Tryb Taniec: naśladuj pozycje i zbieraj punkty!');
+            if (e.key === ' ' || e.key === 'Space') {
+                e.preventDefault();
+                // spawn a block
+                spawnBlock();
+            }
+        });
     </script>
 </body>
 </html>
